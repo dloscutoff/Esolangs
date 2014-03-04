@@ -1,0 +1,22 @@
+Every line is a single statement and must begin with a line number.
+
+There are four statements:
+set x rhs           Sets variable x to the value of rhs.
+print val           Prints value.
+jump linenum        Jumps to specified line.
+jumpif val linenum  Jumps to specified line if val is logically true.
+
+The rhs of a set statement can be:
+val
+val operator val
+
+A val can be:
+Identifier: all lowercase letters.
+Literal string: anything inside double quotes (except a double quote).
+Integer: a string of digits.
+
+Operators: + - * / < > =
+
+There are two data types, integer and string. The + operator concatenates if one of its operands is a string. String comparison with < > = is possible. The integer 0 and string "" are logically false; all other values are logically true. There are no unary operators; to set x to -1, use:
+
+10 set x 0 - 1

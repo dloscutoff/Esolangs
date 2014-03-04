@@ -1,0 +1,28 @@
+10  set x 19
+20  set bottles " bottles "
+
+100 set line x + bottles
+110 set line line + "of beer on the wall, "
+120 set line line + x
+130 set line line + bottles
+135 set line line + "of beer."
+140 print line
+
+200 set x x - 1
+210 set none x = 0
+220 jumpif none 400
+230 set multiple x > 1
+240 jumpif multiple 300
+250 set bottles " bottle "
+
+300 set line "Take one down and pass it around, " + x
+310 set line line + bottles
+320 set line line + "of beer on the wall."
+330 print line
+340 print ""
+350 jump 100
+
+400 print "Take one down and pass it around, no more bottles of beer on the wall."
+410 print ""
+420 print "No more bottles of beer on the wall, no more bottles of beer."
+430 print "Go to the store and buy some more, 99 bottles of beer on the wall."
