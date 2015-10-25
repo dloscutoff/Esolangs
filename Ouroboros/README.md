@@ -8,7 +8,7 @@ An Ouroboros program is a series of lines, each of which represents an independe
 
 By way of illustration:
 
-    Abcdefghij  How the code looks (A is head, j is tail)
+    Abcdefghij  How the code is written (A is head, j is tail)
 
     Abcd
     j  e        How the code is treated, in its initial state
@@ -36,7 +36,7 @@ Stack operations:
     @   Rotate top three items on stack
     ;   Pop stack and discard
     .   Duplicate top of stack
-    $   Toggle whether active stack is the shared stack or own stack (initially it's own stack)
+    $   Toggle whether active stack is the shared stack or own stack (initially own stack)
     s   Set own stack active
     S   Set shared stack active
     m   Pop own stack and push to shared stack

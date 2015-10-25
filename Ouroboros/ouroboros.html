@@ -13,12 +13,15 @@ Much of the HTML and CSS was taken from this Befunge interpreter by Ingo Bürk: 
 <h1><a href="https://github.com/dloscutoff/Esolangs/tree/master/Ouroboros">Ouroboros</a></h1>
 <div class="container">
     <textarea id="source" placeholder="Enter your program here" wrap="off"></textarea>
-    <div id="source-display-wrapper">
+    <div id="source-display-wrapper" onclick="sourceDisplayClick()">
         <div id="source-display"></div>
     </div>
 </div>
 <div id="stdin-container" class="container">
     <textarea id="stdin" placeholder="Input" wrap="off"></textarea>
+    <div id="stdin-display-wrapper" onclick="stdinDisplayClick()">
+        <div id="stdin-display"></div>
+    </div>
 </div>
 <div id="controls-container" class="container clearfix">
     <input type="button" id="run" class="control so-box" value="Run" onclick="runBtnClick()" />

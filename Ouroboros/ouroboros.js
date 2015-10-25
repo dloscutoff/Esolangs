@@ -3,7 +3,7 @@
 function Stack() {
     this.stack = [];
     this.length = 0;
-};
+}
 
 Stack.prototype.push = function(item) {
     this.stack.push(item);
@@ -68,7 +68,6 @@ Snake.prototype.step = function() {
     } else if (instruction == '"') {
         this.partialString = "";
     } else if ("0" <= instruction && instruction <= "9") {
-        //!console.log("in number");
         if (this.partialNumber !== null) {
             this.partialNumber = this.partialNumber + instruction;  // NB: concatenation!
         } else {
@@ -206,6 +205,29 @@ Snake.prototype.step = function() {
     return output;
 }
 
+Snake.prototype.getHighlightedCode = function() {
+    var result = "";
+    for (var i = 0; i < this.code.length; i++) {
+        if (i == this.length) {
+            result += '<span class="swallowedCode">';
+        }
+        if (i == this.ip) {
+            if (this.wait > 0) {
+                result += '<span class="nextActiveToken">';
+            } else {
+                result += '<span class="activeToken">';
+            }
+            result += escapeEntities(this.code.charAt(i)) + '</span>';
+        } else {
+            result += escapeEntities(this.code.charAt(i));
+        }
+    }
+    if (this.length < this.code.length) {
+        result += '</span>';
+    }
+    return result;
+}
+
 // Define Program class
 function Program(source, speed, io) {
     this.sharedStack = new Stack();
@@ -222,53 +244,110 @@ function Program(source, speed, io) {
 }
 
 Program.prototype.run = function() {
+    this.step();
     if (this.snakesLiving) {
-        this.step();
         this.timeout = window.setTimeout(this.run.bind(this), 1000 / this.speed);
     }
 }
 
 Program.prototype.step = function() {
-    for (var s = 0; s < this.snakes.length; s++) {
+   for (var s = 0; s < this.snakes.length; s++) {
         var output = this.snakes[s].step();
         if (output) {
             this.io.print(output);
         }
     }
-}
+    this.io.displaySource(this.snakes.map(function (snake) {
+            return snake.getHighlightedCode();
+        }).join("<br>"));
+ }
 
 Program.prototype.halt = function() {
     window.clearTimeout(this.timeout);
 }
 
-var ioFunctions = {print:     function (item) {
-                                  var stdout = document.getElementById('stdout');
-                                  stdout.value += "" + item;
-                              },
-                   getChar:   function () {
-                                  if (inputData) {
-                                      var inputChar = inputData[0];
-                                      inputData = inputData.slice(1);
-                                      return inputChar.charCodeAt(0);
-                                  } else {
-                                      return -1;
-                                  }
-                              },
+var ioFunctions = {print: function (item) {
+                           var stdout = document.getElementById('stdout');
+                           stdout.value += "" + item;
+                       },
+                   getChar: function () {
+                           if (inputData) {
+                               var inputChar = inputData[0];
+                               inputData = inputData.slice(1);
+                               result = inputChar.charCodeAt(0);
+                           } else {
+                               result = -1;
+                           }
+                           var stdinDisplay = document.getElementById('stdin-display');
+                           stdinDisplay.innerHTML = escapeEntities(inputData);
+                           return result;
+                       },
                    getNumber: function () {
-                                  while (inputData && (inputData[0] < "0" || "9" < inputData[0])) {
-                                      inputData = inputData.slice(1);
-                                  }
-                                  if (inputData) {
-                                      var inputNumber = inputData.match(/\d+/)[0];
-                                      inputData = inputData.slice(inputNumber.length);
-                                      return +inputNumber;
-                                  } else {
-                                      return -1;
-                                  }
-                              }};
+                           while (inputData && (inputData[0] < "0" || "9" < inputData[0])) {
+                               inputData = inputData.slice(1);
+                           }
+                           if (inputData) {
+                               var inputNumber = inputData.match(/\d+/)[0];
+                               inputData = inputData.slice(inputNumber.length);
+                               result = +inputNumber;
+                           } else {
+                               result = -1;
+                           }
+                           var stdinDisplay = document.getElementById('stdin-display');
+                           stdinDisplay.innerHTML = escapeEntities(inputData);
+                           return result;
+                       },
+                   displaySource: function (formattedCode) {
+                           var sourceDisplay = document.getElementById('source-display');
+                           sourceDisplay.innerHTML = formattedCode;
+                       }
+                   };
 
 var program = null;
 var inputData = null;
+
+function showEditor() {
+    var source = document.getElementById('source'),
+        sourceDisplayWrapper = document.getElementById('source-display-wrapper'),
+        stdin = document.getElementById('stdin'),
+        stdinDisplayWrapper = document.getElementById('stdin-display-wrapper');
+    
+    source.style.display = "block";
+    stdin.style.display = "block";
+    sourceDisplayWrapper.style.display = "none";
+    stdinDisplayWrapper.style.display = "none";
+    
+    source.focus();
+}
+
+function hideEditor() {
+    var source = document.getElementById('source'),
+        sourceDisplay = document.getElementById('source-display'),
+        sourceDisplayWrapper = document.getElementById('source-display-wrapper'),
+        stdin = document.getElementById('stdin'),
+        stdinDisplay = document.getElementById('stdin-display'),
+        stdinDisplayWrapper = document.getElementById('stdin-display-wrapper');
+    
+    source.style.display = "none";
+    stdin.style.display = "none";
+    sourceDisplayWrapper.style.display = "block";
+    stdinDisplayWrapper.style.display = "block";
+    
+    var sourceHeight = getComputedStyle(source).height,
+        stdinHeight = getComputedStyle(stdin).height;
+    //alert("sourceHeight = " + sourceHeight + ", stdinHeight = " + stdinHeight);
+    sourceDisplayWrapper.style.minHeight = sourceHeight;
+    sourceDisplayWrapper.style.maxHeight = sourceHeight;
+    stdinDisplayWrapper.style.minHeight = stdinHeight;
+    stdinDisplayWrapper.style.maxHeight = stdinHeight;
+
+    sourceDisplay.textContent = source.value;
+    stdinDisplay.textContent = stdin.value;
+}
+
+function escapeEntities(input) {
+    return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 function resetProgram() {
     var stdout = document.getElementById('stdout');
@@ -278,6 +357,7 @@ function resetProgram() {
     }
     program = null;
     inputData = null;
+    showEditor();
 }
 
 function initProgram() {
@@ -285,6 +365,7 @@ function initProgram() {
         stepsPerSecond = document.getElementById('steps-per-second'),
         stdin = document.getElementById('stdin');
     program = new Program(source.value, +stepsPerSecond.innerHTML, ioFunctions);
+    hideEditor();
     inputData = stdin.value;
 }
 
@@ -292,21 +373,23 @@ function runBtnClick() {
     if (program === null || program.snakesLiving == 0) {
         resetProgram();
         initProgram();
-        program.run();
     } else {
         program.halt();
         var stepsPerSecond = document.getElementById('steps-per-second');
         program.speed = +stepsPerSecond.innerHTML;
-        window.setTimeout(program.run.bind(program), 1000 / program.speed);
     }
+    program.run();
 }
 
 function stepBtnClick() {
     if (program === null) {
         initProgram();
-        program.step();
     } else {
         program.halt();
-        window.setTimeout(program.step.bind(program), 1000 / program.speed);
     }
+    program.step();
+}
+
+function sourceDisplayClick() {
+    resetProgram();
 }
