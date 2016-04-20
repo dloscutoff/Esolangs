@@ -33,7 +33,7 @@ Literals:
 Stack operations:
 
     \   Swap top two items on stack
-    @   Rotate top three items on stack
+    @   Rotate top three items on stack, bringing third-from-top to top
     ;   Pop stack and discard
     .   Duplicate top of stack
     $   Toggle whether active stack is the shared stack or own stack (initially own stack)
@@ -92,17 +92,17 @@ Hello world, shorter version using two snakes:
 Fibonacci sequence (endless):
 
     1y(
-    S.@\.nao+
+    S.@.nao+
 
 [Collatz orbit](http://en.wikipedia.org/wiki/Collatz_conjecture) of input number:
 
     rm1(
-    S.nao.2<22*(.2%.@@.3*1+@@*@2/\!*+
+    S.nao.2<20*(.2%.!@.2/@*\3*1+@*+
 
 Test whether input number is prime:
 
     Sr0s1(
-    )S1+.@@.@@%!Ms+S.@@.@>6*(6s2=n1(
+    )S1+.@.@%!Ms+S.@.@@>6*(6s2=n1(
 
 Cat:
 

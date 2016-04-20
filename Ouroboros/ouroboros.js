@@ -123,9 +123,9 @@ Snake.prototype.step = function() {
         var c = this.currStack.pop();
         var b = this.currStack.pop();
         var a = this.currStack.pop();
+        this.currStack.push(b);
         this.currStack.push(c);
         this.currStack.push(a);
-        this.currStack.push(b);
     } else if (instruction == ";") {
         this.currStack.pop();
     } else if (instruction == "+") {
@@ -335,7 +335,6 @@ function hideEditor() {
     
     var sourceHeight = getComputedStyle(source).height,
         stdinHeight = getComputedStyle(stdin).height;
-    //alert("sourceHeight = " + sourceHeight + ", stdinHeight = " + stdinHeight);
     sourceDisplayWrapper.style.minHeight = sourceHeight;
     sourceDisplayWrapper.style.maxHeight = sourceHeight;
     stdinDisplayWrapper.style.minHeight = stdinHeight;
