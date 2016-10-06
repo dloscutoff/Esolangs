@@ -44,7 +44,7 @@ There are eight built-in functions in tinylisp. A function evaluates each of its
 
 "Value" here refers to any integer, name, list, or builtin.
 
-There are three built-in macros in tinylisp. A macro, unlike a function, does not evaluate its arguments before applying operations to them.
+There are four built-in macros in tinylisp. A macro, unlike a function, does not evaluate its arguments before applying operations to them.
 
 - `q` - quote. Takes an expression and returns it unevaluated. Evaluating `(1 2 3)` gives an error because it tries to call `1` as a function or macro, but `(q (1 2 3))` returns the list `(1 2 3)`. Evaluating `a` gives the value bound to the name `a`, but `(q a)` gives the name itself.
 - `i` - if. Takes a condition expression, an if-true expression, and an if-false expression. Evaluates the condition first. If the result is falsy (`0` or nil), evaluates and returns the if-false expression. Otherwise, evaluates and returns the if-true expression. Note that the expression that is not returned is never evaluated.
@@ -63,7 +63,7 @@ For example, the following expression is a function that adds two integers:
     (q               List must be quoted to prevent evaluation
      (
       (x y)          Parameter names
-      (s x (s 0 y))  Expression (in infix, x - (0 - y))
+      (s x (s 0 y))  Expression (in infix, x-(0-y))
      )   
     )
 
@@ -121,4 +121,4 @@ The interactive prompt provides these additional commands:
 - `(restart)` clears all user-defined names, starting over from scratch.
 - `(quit)` ends the session.
 
-The prompt reads one line at a time. In a file, an expression can span multiple lines, but at the prompt, the end of a line is considered the end of the expression. Any open parentheses are auto-closed.
+Note: the interactive prompt reads one line at a time. In a file, an expression can span multiple lines; but at the prompt, *the end of a line is considered the end of the expression*, and any open parentheses are auto-closed. Lines can still contain multiple expressions, which are evaluated in order as usual.
