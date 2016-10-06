@@ -106,4 +106,4 @@ Test whether input number is prime:
 
 Cat:
 
-    i.1+!2*(o
+    i.0<2*(o
