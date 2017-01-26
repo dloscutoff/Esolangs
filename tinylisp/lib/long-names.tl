@@ -1,0 +1,13 @@
+
+(d cons c)
+(d head h)
+(d car h)
+(d tail t)
+(d cdr t)
+(d add2 a)
+(d sub2 s)
+(d less? l)
+(d equal? e)
+(d def d)
+(d eval v)
+(d nil ())
