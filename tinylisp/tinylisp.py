@@ -1,21 +1,29 @@
 #!/usr/bin/python3
 
+import sys, os
+
 whitespace = " \t\n\r"
 symbols = "()"
 
-# Shortcut function for print without newline
-write = lambda x: print(x, end="")
+# Shortcut function for print without newline and print to stderr
+write = lambda *args: print(*args, end="")
+error = lambda *args: print("Error:", *args, file=sys.stderr)
 
 def scan(code):
     i = 0
+    # Add a space to the end to allow peeking at the next character without
+    # requiring a check for end-of-string
     code += " "
     while i < len(code):
         char = code[i]
         if char in whitespace:
+            # Whitespace (ignore)
             pass
         elif char in symbols:
+            # Reserved symbol
             yield char
         else:
+            # Start of a name or literal--scan till the end of it
             a = i
             while code[i+1] not in whitespace + symbols:
                 i += 1
@@ -25,6 +33,7 @@ def scan(code):
 def parse(code):
     tree = []
     if type(code) is str:
+        # If we're given a raw codestring, scan it before parsing
         code = scan(code)
     for token in code:
         if token == "(":
@@ -37,17 +46,17 @@ def parse(code):
             tree.append(token)
     return tree
 
-# Note: disp and load are in the reference implementation for convenience;
-# submissions do not need to implement them as tinylisp builtins
 
 builtins = {"tl_cons": "c",
             "tl_head": "h",
             "tl_tail": "t",
-            "tl_subt2": "s",
+            "tl_sub2": "s",
+            "tl_add2": "a",
             "tl_less2": "l",
             "tl_eq2": "e",
             "tl_eval": "v",
             "tl_disp": "disp",
+            "tl_type": "type",
             # The following four are macros:
             "tl_def": "d",
             "tl_if": "i",
@@ -67,6 +76,7 @@ def function(pyFn):
 
 class Program:
     def __init__(self):
+        self.modules = []
         self.names = [{}]
         self.depth = 0
         for name in dir(self):
@@ -78,8 +88,12 @@ class Program:
                 self.names[0][tlName] = getattr(self, name)
 
     def call(self, function, args, fname):
-        if type(function) is not list or not 2 <= len(function) <= 3:
-            print("Error: object is not callable", function)
+        if type(function) is not list:
+            error(self.tl_type(function), "is not callable")
+            return []
+        elif not 2 <= len(function) <= 3:
+            error("%d-length list cannot be interpreted as function or macro"
+                  % len(function))
             return []
         elif len(function) == 2:
             # Regular function: evaluate all the arguments
@@ -97,14 +111,26 @@ class Program:
             if type(argnames) is list:
                 if len(argnames) == len(args):
                     for name, val in zip(argnames, args):
-                        self.names[self.depth][name] = val
+                        if type(name) is str:
+                            self.names[self.depth][name] = val
+                        else:
+                            error("argument list must contain names, not",
+                                  self.tl_type(name))
+                            result = []
+                            break
                 else:
-                    print("Error: wrong number of arguments")
+                    error("wrong number of arguments")
                     result = []
                     break
-            else:
+            elif type(argnames) is str:
                 # Single name, bind entire arglist to it
                 self.names[self.depth][argnames] = args
+            else:
+                error("arguments must either be name of list of names, not",
+                      self.tl_type(argnames))
+                result = []
+                break
+            
             # Tail-call elimination
             returnExpr = code
             while type(returnExpr) is list and returnExpr[:1] == ["i"]:
@@ -142,7 +168,7 @@ class Program:
     @function
     def tl_head(self, lyst):
         if type(lyst) is not list:
-            print("Error: cannot get head of non-list")
+            error("cannot get head of non-list")
             return []
         elif len(lyst) == 0:
             return []
@@ -152,7 +178,7 @@ class Program:
     @function
     def tl_tail(self, lyst):
         if type(lyst) is not list:
-            print("Error: cannot get tail of non-list")
+            error("cannot get tail of non-list")
             return []
         elif len(lyst) == 0:
             return []
@@ -162,7 +188,7 @@ class Program:
     @function
     def tl_cons(self, head, tail):
         if type(tail) is not list:
-            print("Error: cannot cons to non-list in tinylisp")
+            error("cannot cons to non-list in tinylisp")
             return []
         else:
             return [head] + tail
@@ -170,11 +196,11 @@ class Program:
     @macro
     def tl_def(self, name, value):
         if type(name) is int:
-            print("Error: cannot def integer")
+            error("cannot def integer")
         elif type(name) is list:
-            print("Error: cannot def list")
+            error("cannot def list")
         elif name in self.names[0]:
-            print("Error: name already in use")
+            error("name already in use")
         else:
             self.names[0][name] = self.tl_eval(value)
         return name
@@ -236,11 +262,11 @@ class Program:
                     return function(*args)
                 except TypeError as err:
                     # Wrong number of arguments to builtin
-                    print("Error: wrong number of arguments")
+                    error("wrong number of arguments")
                     return []
             else:
                 # Trying to call an int or unevaluated name
-                print("Error: %s is not a function or macro" % function)
+                error("%s is not a function or macro" % function)
                 return []
         elif type(code) is int:
             # Integer literal
@@ -252,7 +278,7 @@ class Program:
             elif code in self.names[0]:
                 return self.names[0][code]
             else:
-                print("Error: referencing undefined name", code)
+                error("referencing undefined name", code)
                 return []
         else:
             # Probably a builtin
@@ -269,31 +295,68 @@ class Program:
 
     @function
     def tl_less2(self, arg1, arg2):
-        return int(arg1 < arg2)
+        try:
+            return int(arg1 < arg2)
+        except TypeError:
+            error("unorderable types: %s and %s"
+                  % (self.tl_type(arg1), self.tl_type(arg2)))
 
     @function
-    def tl_subt2(self, arg1, arg2):
+    def tl_sub2(self, arg1, arg2):
         if type(arg1) is not int or type(arg2) is not int:
-            print("Error: cannot subtract non-integers")
+            error("cannot subtract non-integers")
             return []
         else:
             return arg1 - arg2
+
+    @function
+    def tl_add2(self, arg1, arg2):
+        if type(arg1) is not int or type(arg2) is not int:
+            error("cannot add non-integers")
+            return []
+        else:
+            return arg1 + arg2
+
+    @function
+    def tl_type(self, value):
+        if type(value) is int:
+            return "Int"
+        elif type(value) is str:
+            return "Name"
+        elif type(value) is list:
+            return "List"
+        else:
+            return "Builtin"
 
     @macro
     def tl_quote(self, quoted):
         return quoted
 
     @macro
-    def tl_load(self, filename):
-        if not filename.endswith(".tl"):
-            filename += ".tl"
-        try:
-            with open(filename) as f:
-                libraryCode = f.read()
-        except IOError:
-            print("Error: could not load", filename)
-        else:
-            run(libraryCode, self)
+    def tl_load(self, module):
+        if not module.endswith(".tl"):
+            module += ".tl"
+        abspath = os.path.abspath(module)
+        if abspath not in self.modules:
+            # Module has not already been loaded
+            try:
+                with open(abspath) as f:
+                    libraryCode = f.read()
+            except (FileNotFoundError, IOError):
+                error("could not load", module)
+            else:
+                # Add the module to the list of loaded modules
+                self.modules.append(abspath)
+                # Save the current directory and chdir to the module's
+                # directory--this allows relative paths in load calls from
+                # within the module
+                moduleDirectory, moduleName = os.path.split(abspath)
+                savedDirectory = os.path.abspath(os.curdir)
+                os.chdir(moduleDirectory)
+                # Execute the module code
+                run(libraryCode, self)
+                # Restore the previous directory
+                os.chdir(savedDirectory)
         return None
 
 
@@ -321,12 +384,12 @@ def repl():
             try:
                 run(instruction, environment)
             except KeyboardInterrupt:
-                print("Calculation interrupted by user.")
+                error("calculation interrupted by user.")
             except RecursionError:
-                print("Error: recursion depth exceeded. How could you forget "
+                error("recursion depth exceeded. How could you forget "
                       "to use tail calls?!")
             except Exception as err:
-                print("Implementation error:", err)
+                error(err)
                 break
         instruction = inputInstruction()
     print("Bye!")

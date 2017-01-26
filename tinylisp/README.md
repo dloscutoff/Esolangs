@@ -31,16 +31,18 @@ Expressions in a program are evaluated in order and the results of each sent to 
 
 ### Built-in functions and macros
 
-There are eight built-in functions in tinylisp. A function evaluates each of its arguments before applying some operation to them and returning the result.
+There are nine built-in functions in tinylisp. A function evaluates each of its arguments before applying some operation to them and returning the result.
 
 - `c` - construct list. Takes a value and a list and returns a new list obtained by prepending the value to the front of the list.
 - `h` - head (car, in Lisp terminology). Takes a list and returns the first item in it, or nil if given nil.
 - `t` - tail (cdr, in Lisp terminology). Takes a list and returns a new list containing all but the first item, or nil if given nil.
+- `a` - add. Takes two integers and returns the first plus the second.
 - `s` - subtract. Takes two integers and returns the first minus the second.
 - `l` - less than. Takes two integers; returns 1 if the first is less than the second, 0 otherwise.
 - `e` - equal. Takes two values; returns 1 if the two are identical, 0 otherwise.
 - `v` - eval. Takes a value, representing an expression, and evaluates it. E.g. doing `(v (q (c a b)))` is the same as doing `(c a b)`; `(v 1)` gives `1`.
 - `disp`. Takes a value and writes it to stdout, followed by a newline. Returns nil.
+- `type`. Takes a value and returns one of four type names: `Int`, `Name`, `List`, or `Builtin`.
 
 "Value" here refers to any integer, name, list, or builtin.
 
