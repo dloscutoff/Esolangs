@@ -465,7 +465,15 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         # User specified one or more files--run them
         for filename in sys.argv[1:]:
-            run("(load %s)" % filename)
+            try:
+                with open(filename) as f:
+                    code = f.read()
+            except FileNotFoundError:
+                error("could not find", filename)
+            except IOError:
+                error("could not read", filename)
+            else:
+                run(code)
     else:
         # No filename specified, so...
         repl()
