@@ -77,6 +77,7 @@ def function(pyFn):
 class Program:
     def __init__(self):
         self.modules = []
+        self.modulePaths = [os.path.abspath(os.path.dirname(__file__))]
         self.names = [{}]
         self.depth = 0
         for name in dir(self):
@@ -207,26 +208,27 @@ class Program:
 
     @function
     def tl_disp(self, value, end="\n"):
-        if value == []:
-            # Empty list
-            write("()")
-        elif type(value) is list:
-            # Non-empty list
-            write("(")
-            self.tl_disp(value[0], end="")
-            for item in value[1:]:
-                write(" ")
-                self.tl_disp(item, end="")
-            write(")")
-        elif type(value) is type(self.tl_disp):
-            # One of the builtin functions or macros
-            write("<builtin %s %s>"
-                  % ("macro" if value.isMacro else "function",
-                     value.__func__.__name__))
-        else:
-            # Integer or name
-            write(value)
-        write(end)
+        if not self.quiet:
+            if value == []:
+                # Empty list
+                write("()")
+            elif type(value) is list:
+                # Non-empty list
+                write("(")
+                self.tl_disp(value[0], end="")
+                for item in value[1:]:
+                    write(" ")
+                    self.tl_disp(item, end="")
+                write(")")
+            elif type(value) is type(self.tl_disp):
+                # One of the builtin functions or macros
+                write("<builtin %s %s>"
+                      % ("macro" if value.isMacro else "function",
+                         value.__func__.__name__))
+            else:
+                # Integer or name
+                write(value)
+            write(end)
         return []
 
     @function
@@ -336,28 +338,33 @@ class Program:
     def tl_load(self, module):
         if not module.endswith(".tl"):
             module += ".tl"
-        abspath = os.path.abspath(module)
+        module = module.replace("/", os.sep)
+        abspath = os.path.join(self.modulePaths[-1], module)
+        moduleDirectory, moduleName = os.path.split(abspath)
         if abspath not in self.modules:
             # Module has not already been loaded
             try:
                 with open(abspath) as f:
-                    libraryCode = f.read()
+                    moduleCode = f.read()
             except (FileNotFoundError, IOError):
-                error("could not load", module)
+                error("could not load", moduleName, "from", moduleDirectory)
             else:
                 # Add the module to the list of loaded modules
                 self.modules.append(abspath)
-                # Save the current directory and chdir to the module's
-                # directory--this allows relative paths in load calls from
+                # Push the module's directory to the stack of module
+                # directories--this allows relative paths in load calls from
                 # within the module
-                moduleDirectory, moduleName = os.path.split(abspath)
-                savedDirectory = os.path.abspath(os.curdir)
-                os.chdir(moduleDirectory)
+                self.modulePaths.append(moduleDirectory)
                 # Execute the module code
-                run(libraryCode, self)
-                # Restore the previous directory
-                os.chdir(savedDirectory)
+                run(moduleCode, self)
+                # Put everything back the way it was before loading
+                self.modulePaths.pop()
         return None
+
+    @property
+    def quiet(self):
+        # True (suppress output) while in process of loading modules
+        return len(self.modulePaths) > 1
 
 
 def run(code, env=None):
@@ -455,7 +462,6 @@ Special commands for the interactive prompt:
 """)
 
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) > 1:
         # User specified one or more files--run them
         for filename in sys.argv[1:]:

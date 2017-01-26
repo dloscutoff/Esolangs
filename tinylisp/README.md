@@ -110,12 +110,11 @@ Recursion is the only repetition construct in tinylisp. The interpreter does [ta
 
 ### Running tinylisp
 
-There are two ways of running tinylisp code: from a file, or from the interactive REPL prompt.
+There are three ways of running tinylisp code: from a file, from the interactive REPL prompt, or at Try It Online.
 
 - To run code from one or more files, pass the filenames as command-line arguments to the interpreter: `python3 tinylisp.py file1.tl file2.tl`.
 - To run code from the interactive prompt, run the interpreter without command-line arguments.
-
-(Note that you can run code from a file when in interactive mode using the `load` macro.)
+- To run code at Try It Online, [click here](https://tio.run/nexus/tinylisp).
 
 The interactive prompt provides these additional commands:
 
