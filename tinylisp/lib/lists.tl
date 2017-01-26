@@ -1,4 +1,3 @@
-
 (load long-names)
 
 (def _length
@@ -29,3 +28,8 @@
 (def 1to
   (lambda (num)
     (_inclusive-range nil 1 num)))
+    
+(def append
+  (lambda
+    (val list)
+    (reverse (cons val (reverse list)))))
