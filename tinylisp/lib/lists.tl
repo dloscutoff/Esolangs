@@ -1,4 +1,3 @@
-
 (load utilities)
 
 (def _length
@@ -29,3 +28,8 @@
 (def 1to
   (lambda (num)
     (_inclusive-range nil 1 num)))
+    
+(d append
+  (lambda
+    (val list)
+    (rev (c val (rev list)))))
