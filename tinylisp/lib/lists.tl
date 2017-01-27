@@ -29,7 +29,7 @@
   (lambda (num)
     (_inclusive-range nil 1 num)))
     
-(d conj
+(d append
   (lambda
     (val list)
     (rev (c val (rev list)))))
