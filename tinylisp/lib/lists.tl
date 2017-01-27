@@ -1,3 +1,4 @@
+
 (load utilities)
 
 (def _length
@@ -18,6 +19,11 @@
 
 (def reverse (lambda (ls) (_reverse ls nil)))
 
+(def insert-end
+  (lambda
+    (val ls)
+    (reverse (cons val (reverse ls)))))
+
 (def _inclusive-range
   (lambda
     (accumulator lower upper)
@@ -28,8 +34,12 @@
 (def 1to
   (lambda (num)
     (_inclusive-range nil 1 num)))
-    
-(d conj
+
+(def quote-each
   (lambda
-    (val list)
-    (rev (c val (rev list)))))
+    (ls)
+    (i ls
+      (cons
+        (list (q q) (head ls))
+        (quote-each (tail ls)))
+      nil)))

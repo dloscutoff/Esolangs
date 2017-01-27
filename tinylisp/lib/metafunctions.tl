@@ -1,14 +1,6 @@
 
 (load utilities)
-
-(def quote-each
-  (lambda
-    (ls)
-    (i ls
-      (cons
-        (list (q q) (head ls))
-        (quote-each (tail ls)))
-      nil)))
+(load lists)
 
 (def apply
   (lambda
@@ -41,3 +33,25 @@
       default)))
 
 (def foldl (lambda (func ls) (foldl-default func ls nil)))
+
+(def _chain-last
+  (macro
+    args
+    (i (nil? (tail args))
+      (list (q (arg)) (head args))
+      (eval
+        (cons
+          (q _chain-last)
+          (cons
+            (insert-end (head args) (htail args))
+            (ttail args)))))))
+
+(def chain-last
+  (macro
+    args
+    (eval
+      (cons
+        (q _chain-last)
+        (cons
+          (insert-end (q arg) (head args))
+          (tail args)))))))

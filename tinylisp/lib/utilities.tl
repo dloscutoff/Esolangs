@@ -21,8 +21,9 @@
 (def zero? (lambda (val) (equal? val 0)))
 
 (def cddr (lambda (ls) (cdr (cdr ls))))
-
 (def cadr (lambda (ls) (car (cdr ls))))
+(def ttail (lambda (ls) (tail (tail ls))))
+(def htail (lambda (ls) (head (tail ls))))
 
 (def _and
   (lambda
@@ -47,4 +48,3 @@
 (def or (macro args (_or args)))
 
 (def not (lambda (val) (i val 0 1)))
-
