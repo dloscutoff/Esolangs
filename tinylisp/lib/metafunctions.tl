@@ -1,4 +1,3 @@
-
 (load utilities)
 
 (def quote-each
@@ -41,3 +40,15 @@
       default)))
 
 (def foldl (lambda (func ls) (foldl-default func ls nil)))
+
+(def _chain-left
+  (lambda
+    args
+    (i (equals () (tail args)) (cons (quote (arg)) (cons (head args) ()))
+      (eval (cons (quote _chain-left) (cons (append (head args) (head (tail args))) (tail (tail args))))))))
+
+(def chain-left
+  (lambda
+    args
+    (eval (cons (quote _chain-left) (cons (append (quote arg) (head args)) (tail args))))))
+
