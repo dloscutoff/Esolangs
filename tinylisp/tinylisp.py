@@ -47,21 +47,39 @@ def parse(code):
     return tree
 
 
+# tinylisp built-in functions and macros
+# Key = implementation name; value = tinylisp name
+
 builtins = {"tl_cons": "c",
             "tl_head": "h",
             "tl_tail": "t",
-            "tl_sub2": "s",
             "tl_add2": "a",
+            "tl_sub2": "s",
             "tl_less2": "l",
             "tl_eq2": "e",
             "tl_eval": "v",
-            "tl_disp": "disp",
             "tl_type": "type",
+            "tl_disp": "disp",
             # The following four are macros:
             "tl_def": "d",
             "tl_if": "i",
             "tl_quote": "q",
-            "tl_load": "load"}
+            "tl_load": "load",
+            # The following three are intended for repl use:
+            "tl_help": "help",
+            "tl_restart": "restart",
+            "tl_quit": "quit",
+            }
+
+# These are functions and macros that should not output their return values
+# when called at the top level (except in repl mode)
+
+topLevelQuietFns = ["tl_def", "tl_disp", "tl_load"]
+
+# These are functions and macros that cannot be called from other functions
+# or macros, only from the top level
+
+topLevelOnlyFns = ["tl_load", "tl_help", "tl_restart", "tl_quit"]
 
 # Decorators for member functions that implement builtins
 
@@ -73,22 +91,41 @@ def function(pyFn):
     pyFn.isMacro = False
     return pyFn
 
+# Exception that is raised when, in the repl, the user types (quit)
+
+class UserQuit(BaseException): pass
+
 
 class Program:
-    def __init__(self):
+    def __init__(self, repl=False):
+        self.repl = repl
         self.modules = []
         self.modulePaths = [os.path.abspath(os.path.dirname(__file__))]
         self.names = [{}]
         self.depth = 0
-        for name in dir(self):
-            # Go through the member functions and put the ones that implement
-            # tinylisp functions or macros into the top-level symbol table
-            # under their abbreviated names
-            if name in builtins:
-                tlName = builtins[name]
-                self.names[0][tlName] = getattr(self, name)
+        # Go through the tinylisp builtins and put the corresponding
+        # member functions into the top-level symbol table
+        for fnName, tlName in builtins.items():
+            self.names[0][tlName] = getattr(self, fnName)
 
-    def call(self, function, args, fname):
+    def execute(self, code):
+        if type(code) is str:
+            code = parse(code)
+        # Evaluate each expression in the code and (possibly) display it
+        for expr in code:
+            # Figure out which function the outermost call is
+            outerFunction = None
+            if type(expr) is list and type(expr[0]) is str:
+                outerFunction = self.tl_eval(expr[0])
+                if type(outerFunction) is type(self.tl_eval):
+                    outerFunction = outerFunction.__name__
+            result = self.tl_eval(expr, topLevel=True)
+            # If outer function is in the topLevelQuietFns list, suppress
+            # output--but always show output when running in repl mode
+            if self.repl or outerFunction not in topLevelQuietFns:
+                self.tl_disp(result)
+
+    def call(self, function, args):
         if type(function) is not list:
             error(self.tl_type(function), "is not callable")
             return []
@@ -134,17 +171,19 @@ class Program:
             
             # Tail-call elimination
             returnExpr = code
-            while type(returnExpr) is list and returnExpr[:1] == ["i"]:
-                test = self.tl_eval(returnExpr[1])
-                if test == 0 or test == []:
-                    returnExpr = returnExpr[3]
+            head = None
+            # Eliminate any ifs
+            while type(returnExpr) is list and len(returnExpr) > 0:
+                head = self.tl_eval(returnExpr[0])
+                if head == self.tl_if:
+                    # The head is (some name for) tl_if
+                    test = self.tl_eval(returnExpr[1])
+                    if test == 0 or test == []:
+                        returnExpr = returnExpr[3]
+                    else:
+                        returnExpr = returnExpr[2]
                 else:
-                    returnExpr = returnExpr[2]
-            if (type(returnExpr) in (str, int, type(self.tl_eval))
-                    or returnExpr == []):
-                result = self.tl_eval(returnExpr)
-                break
-            head = self.tl_eval(returnExpr[0])
+                    break
             if type(head) is list and 2 <= len(head) <= 3:
                 # Swap out the args from the original call for the updated
                 # args, the function for the new function (which might be
@@ -153,7 +192,7 @@ class Program:
                     macro = False
                     argnames, code = head
                     args = [self.tl_eval(arg) for arg in returnExpr[1:]]
-                elif len(function) == 3:
+                elif len(head) == 3:
                     macro = True
                     argnames, code = head[1:]
                     args = returnExpr[1:]
@@ -165,6 +204,14 @@ class Program:
         del self.names[self.depth]
         self.depth -= 1
         return result
+
+    @function
+    def tl_cons(self, head, tail):
+        if type(tail) is not list:
+            error("cannot cons to non-list in tinylisp")
+            return []
+        else:
+            return [head] + tail
 
     @function
     def tl_head(self, lyst):
@@ -187,28 +234,95 @@ class Program:
             return lyst[1:]
 
     @function
-    def tl_cons(self, head, tail):
-        if type(tail) is not list:
-            error("cannot cons to non-list in tinylisp")
+    def tl_add2(self, arg1, arg2):
+        if type(arg1) is not int or type(arg2) is not int:
+            error("cannot add non-integers")
             return []
         else:
-            return [head] + tail
+            return arg1 + arg2
 
-    @macro
-    def tl_def(self, name, value):
-        if type(name) is int:
-            error("cannot def integer")
-        elif type(name) is list:
-            error("cannot def list")
-        elif name in self.names[0]:
-            error("name already in use")
+    @function
+    def tl_sub2(self, arg1, arg2):
+        if type(arg1) is not int or type(arg2) is not int:
+            error("cannot subtract non-integers")
+            return []
         else:
-            self.names[0][name] = self.tl_eval(value)
-        return name
+            return arg1 - arg2
+
+    @function
+    def tl_less2(self, arg1, arg2):
+        try:
+            return int(arg1 < arg2)
+        except TypeError:
+            error("unorderable types: %s and %s"
+                  % (self.tl_type(arg1), self.tl_type(arg2)))
+
+    @function
+    def tl_eq2(self, arg1, arg2):
+        return int(arg1 == arg2)
+
+    @function
+    def tl_eval(self, code, topLevel=False):
+        if type(code) is list:
+            if code == []:
+                # Nil evaluates to itself
+                return []
+            # Otherwise, it's a function/macro call
+            function = self.tl_eval(code[0])
+            if type(function) is list:
+                # User-defined function or macro
+                return self.call(function, code[1:])
+            elif type(function) is type(self.tl_eval):
+                # Builtin function or macro
+                if function.__name__ in topLevelOnlyFns and not topLevel:
+                    error("call to", function.__name__, "cannot be nested")
+                    return []
+                if function.isMacro:
+                    # Macros receive their args unevaluated
+                    args = code[1:]
+                else:
+                    # Functions receive their args evaluated
+                    args = (self.tl_eval(param) for param in code[1:])
+                try:
+                    return function(*args)
+                except TypeError as err:
+                    # Wrong number of arguments to builtin
+                    error("wrong number of arguments for", function.__name__)
+                    return []
+            else:
+                # Trying to call an int or unevaluated name
+                error("%s is not a function or macro" % function)
+                return []
+        elif type(code) is int:
+            # Integer literal
+            return code
+        elif type(code) is str:
+            # Name; look up its value
+            if code in self.names[self.depth]:
+                return self.names[self.depth][code]
+            elif code in self.names[0]:
+                return self.names[0][code]
+            else:
+                error("referencing undefined name", code)
+                return []
+        else:
+            # Probably a builtin
+            return code
+
+    @function
+    def tl_type(self, value):
+        if type(value) is int:
+            return "Int"
+        elif type(value) is str:
+            return "Name"
+        elif type(value) is list:
+            return "List"
+        else:
+            return "Builtin"
 
     @function
     def tl_disp(self, value, end="\n"):
-        if not self.quiet:
+        if value is not None and not self.quiet:
             if value == []:
                 # Empty list
                 write("()")
@@ -224,67 +338,24 @@ class Program:
                 # One of the builtin functions or macros
                 write("<builtin %s %s>"
                       % ("macro" if value.isMacro else "function",
-                         value.__func__.__name__))
+                         value.__name__))
             else:
                 # Integer or name
                 write(value)
             write(end)
         return []
 
-    @function
-    def tl_eq2(self, arg1, arg2):
-        return int(arg1 == arg2)
-
-    @function
-    def tl_eval(self, code, depth=None):
-        if depth is None:
-            depth = self.depth
-        if type(code) is list:
-            if code == []:
-                # Nil evaluates to itself
-                return []
-            # Otherwise, it's a function/macro call
-            if type(code[0]) is str:
-                fname = code[0]
-            else:
-                fname = None
-            function = self.tl_eval(code[0])
-            if type(function) is list:
-                # User-defined function or macro
-                return self.call(function, code[1:], fname)
-            elif type(function) is type(self.tl_eval):
-                # Builtin function or macro
-                if function.isMacro:
-                    # Macros receive their args unevaluated
-                    args = code[1:]
-                else:
-                    # Functions receive their args evaluated
-                    args = (self.tl_eval(param) for param in code[1:])
-                try:
-                    return function(*args)
-                except TypeError as err:
-                    # Wrong number of arguments to builtin
-                    error("wrong number of arguments")
-                    return []
-            else:
-                # Trying to call an int or unevaluated name
-                error("%s is not a function or macro" % function)
-                return []
-        elif type(code) is int:
-            # Integer literal
-            return code
-        elif type(code) is str:
-            # Name; look up its value
-            if code in self.names[depth]:
-                return self.names[depth][code]
-            elif code in self.names[0]:
-                return self.names[0][code]
-            else:
-                error("referencing undefined name", code)
-                return []
+    @macro
+    def tl_def(self, name, value):
+        if type(name) is int:
+            error("cannot def integer")
+        elif type(name) is list:
+            error("cannot def list")
+        elif name in self.names[0]:
+            error("name already in use")
         else:
-            # Probably a builtin
-            return code
+            self.names[0][name] = self.tl_eval(value)
+        return name
 
     @macro
     def tl_if(self, cond, trueval, falseval):
@@ -295,41 +366,6 @@ class Program:
         else:
             return self.tl_eval(trueval)
 
-    @function
-    def tl_less2(self, arg1, arg2):
-        try:
-            return int(arg1 < arg2)
-        except TypeError:
-            error("unorderable types: %s and %s"
-                  % (self.tl_type(arg1), self.tl_type(arg2)))
-
-    @function
-    def tl_sub2(self, arg1, arg2):
-        if type(arg1) is not int or type(arg2) is not int:
-            error("cannot subtract non-integers")
-            return []
-        else:
-            return arg1 - arg2
-
-    @function
-    def tl_add2(self, arg1, arg2):
-        if type(arg1) is not int or type(arg2) is not int:
-            error("cannot add non-integers")
-            return []
-        else:
-            return arg1 + arg2
-
-    @function
-    def tl_type(self, value):
-        if type(value) is int:
-            return "Int"
-        elif type(value) is str:
-            return "Name"
-        elif type(value) is list:
-            return "List"
-        else:
-            return "Builtin"
-
     @macro
     def tl_quote(self, quoted):
         return quoted
@@ -338,8 +374,7 @@ class Program:
     def tl_load(self, module):
         if not module.endswith(".tl"):
             module += ".tl"
-        module = module.replace("/", os.sep)
-        abspath = os.path.join(self.modulePaths[-1], module)
+        abspath = os.path.abspath(os.path.join(self.modulePaths[-1], module))
         moduleDirectory, moduleName = os.path.split(abspath)
         if abspath not in self.modules:
             # Module has not already been loaded
@@ -356,10 +391,23 @@ class Program:
                 # within the module
                 self.modulePaths.append(moduleDirectory)
                 # Execute the module code
-                run(moduleCode, self)
+                self.execute(moduleCode)
                 # Put everything back the way it was before loading
                 self.modulePaths.pop()
-        return None
+        return "Loaded %s" % module
+
+    @macro
+    def tl_help(self):
+        return helpText
+
+    @macro
+    def tl_restart(self):
+        self.__init__(repl=self.repl)
+        return "Restarting..."
+
+    @macro
+    def tl_quit(self):
+        raise UserQuit
 
     @property
     def quiet(self):
@@ -367,37 +415,23 @@ class Program:
         return len(self.modulePaths) > 1
 
 
-def run(code, env=None):
-    if type(code) is str:
-        code = parse(code)
-    if env is None:
-        env = Program()
-    for expr in code:
-        result = env.tl_eval(expr)
-        if result is not None:
-            env.tl_disp(result)
-
 def repl():
     print("(welcome to tinylisp)")
-    environment = Program()
+    environment = Program(repl=True)
     instruction = inputInstruction()
-    while instruction != "(quit)":
-        if instruction == "(restart)":
-            print("Restarting...")
-            environment = Program()
-        elif instruction.lower() in ["(help)", "help"]:
-            showHelp()
-        else:
-            try:
-                run(instruction, environment)
-            except KeyboardInterrupt:
-                error("calculation interrupted by user.")
-            except RecursionError:
-                error("recursion depth exceeded. How could you forget "
-                      "to use tail calls?!")
-            except Exception as err:
-                error(err)
-                break
+    while True:
+        try:
+            environment.execute(instruction)
+        except KeyboardInterrupt:
+            error("calculation interrupted by user.")
+        except RecursionError:
+            error("recursion depth exceeded. How could you forget "
+                  "to use tail calls?!")
+        except UserQuit:
+            break
+        except Exception as err:
+            error(err)
+            break
         instruction = inputInstruction()
     print("Bye!")
 
@@ -408,8 +442,7 @@ def inputInstruction():
         instruction = "(quit)"
     return instruction
     
-def showHelp():
-    print("""
+helpText = """
 Enter expressions at the prompt.
 
 - Any run of digits is an integer.
@@ -459,7 +492,7 @@ Special commands for the interactive prompt:
 - (restart) clears all user-defined names, starting over from scratch.
 - (help) displays this help text.
 - (quit) ends the session.
-""")
+"""
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -473,7 +506,11 @@ if __name__ == "__main__":
             except IOError:
                 error("could not read", filename)
             else:
-                run(code)
+                environment = Program()
+                try:
+                    environment.execute(code)
+                except UserQuit:
+                    pass
     else:
         # No filename specified, so...
         repl()

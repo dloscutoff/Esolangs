@@ -31,7 +31,7 @@ Expressions in a program are evaluated in order and the results of each sent to 
 
 ### Built-in functions and macros
 
-There are nine built-in functions in tinylisp. A function evaluates each of its arguments before applying some operation to them and returning the result.
+There are ten built-in functions in tinylisp. A function evaluates each of its arguments before applying some operation to them and returning the result.
 
 - `c` - construct list. Takes a value and a list and returns a new list obtained by prepending the value to the front of the list.
 - `h` - head (car, in Lisp terminology). Takes a list and returns the first item in it, or nil if given nil.
