@@ -9,5 +9,6 @@
 (d less? l)
 (d equal? e)
 (d def d)
+(d if i)
 (d eval v)
 (d nil ())

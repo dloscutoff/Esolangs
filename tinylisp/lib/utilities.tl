@@ -28,8 +28,8 @@
 (def _and
   (lambda
     (ls)
-    (i ls
-      (i (eval (head ls))
+    (if ls
+      (if (eval (head ls))
         (_and (tail ls))
         0)
       1)))
@@ -39,12 +39,12 @@
 (def _or
   (lambda
     (ls)
-    (i ls
-      (i (eval (head ls))
+    (if ls
+      (if (eval (head ls))
         1
         (_or (tail ls)))
       0)))
 
 (def or (macro args (_or args)))
 
-(def not (lambda (val) (i val 0 1)))
+(def not (lambda (val) (if val 0 1)))
