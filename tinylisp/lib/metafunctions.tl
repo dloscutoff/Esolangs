@@ -10,7 +10,7 @@
 (def map
   (lambda
     (func ls)
-    (i ls
+    (if ls
       (cons
         (apply func (list (head ls)))
         (map func (tail ls)))
@@ -19,7 +19,7 @@
 (def _foldl
   (lambda
     (func accum ls)
-    (i ls
+    (if ls
       (_foldl func
         (apply func (list accum (head ls)))
         (tail ls))
@@ -28,7 +28,7 @@
 (def foldl-default
   (lambda
     (func ls default)
-    (i ls
+    (if ls
       (_foldl func (head ls) (tail ls))
       default)))
 
@@ -37,7 +37,7 @@
 (def _chain-last
   (macro
     args
-    (i (nil? (tail args))
+    (if (nil? (tail args))
       (list (q (arg)) (head args))
       (eval
         (cons

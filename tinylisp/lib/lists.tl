@@ -34,7 +34,7 @@
 (def _insert
   (lambda
     (val ls-front ls-back index)
-    (i index
+    (if index
       (_insert val (cons (head ls-back) ls-front) (tail ls-back) (sub2 index 1))
       (_reverse ls-front (cons val ls-back)))))
 

@@ -157,14 +157,15 @@ class Program:
                             result = []
                             break
                 else:
-                    error("wrong number of arguments")
+                    error("passing", len(args), "arguments to a",
+                          len(argnames), "argument function")
                     result = []
                     break
             elif type(argnames) is str:
                 # Single name, bind entire arglist to it
                 self.names[self.depth][argnames] = args
             else:
-                error("arguments must either be name of list of names, not",
+                error("arguments must either be name or list of names, not",
                       self.tl_type(argnames))
                 result = []
                 break
