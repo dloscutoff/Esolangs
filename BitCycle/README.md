@@ -10,31 +10,31 @@ A program is a 2D grid of characters (the *playfield*), implicitly right-padded 
 
 The devices `<`, `^`, `>`, and `v` change a bit's direction unconditionally, like in ><>.
 
-The device `+` is a conditional direction change. An incoming `0` bit turns left (90 degrees counterclockwise); an incoming `1` bit turns right (90 degrees clockwise).
+The device `+` is a conditional direction change. An incoming `0` bit turns left (90 degrees clockwise); an incoming `1` bit turns right (90 degrees counterclockwise).
 
 ### Splitters and switches
 
-The devices `\` and `/` are *splitters*. When the first bit hits them, they reflect it like the mirrors in ><>. After one reflection, though, they change to their *inactive forms* `-` and `|`, which pass bits straight through.
+The devices `\` and `/` are *splitters*. When the first bit hits them, they reflect it 90 degrees, like the mirrors in ><>. After one reflection, though, they change to their *inactive forms* `-` and `|`, which pass bits straight through.
 
 The device `=` is a *switch*. The first bit that hits it passes straight through. If that bit is a `0`, the switch becomes a *left switch* `{`, which redirects all subsequent bits to the left (like `<`). If the bit is a `1`, the switch becomes a *right switch* `}`, which redirects all subsequent bits to the right (like `>`).
 
-All splitters and switches on the playfield reset to their original states every time one or more collectors opens (see below).
+All splitters and switches on the playfield reset to their original states whenever one or more collectors come open (see below).
 
 ### Collectors
 
-Every letter except `V` is a valid *collector*. A collector maintains a queue of bits, enqueuing bits as they come in. It has two states, *closed* (represented by an uppercase letter) and *open* (represented by the corresponding lowercase letter). When the collector is closed, incoming bits are stored in the queue. When it is open, bits are dequeued (one per tick) and sent out until the queue is empty, at which point the collector switches back to closed. Bits emerge from the right side of the collector and move rightward.
+Any letter except `V` is a *collector*. A collector maintains a queue of bits, enqueuing bits as they come in. It has two states, *closed* (represented by an uppercase letter) and *open* (represented by the corresponding lowercase letter). When the collector is closed, incoming bits are stored in the queue. When it is open, bits are dequeued (one per tick) and sent out until the queue is empty, at which point the collector switches back to closed. Bits emerge from the right side of the collector and move rightward.
 
 When there are no bits moving on the playfield (i.e. all the bits are in collectors), the earliest-lettered collector with a nonempty queue comes open. There may be multiple collectors with the same letter, in which case all of them come open at once.
 
-For example, suppose there are four collectors, labeled `A`, `B`, `B`, and `C`. No bits are moving on the playfield.
+For example: suppose there are four collectors, labeled `A`, `B`, `B`, and `C`, and no bits are moving on the playfield.
 
 - If `A` contains any bits, `A` comes open. Other collectors remain closed, whether they contain any bits or not.
-- If `A` is empty, and either or both of the `B` collectors contains bits, *both* `B` collectors come open.
-- `C` will not open unless `A` and both `B`s are empty.
+- If `A` is empty, and one or more of the `B` collectors contain bits, *both* `B` collectors come open.
+- `C` will not open unless the previous three collectors are all empty.
 
 ### Sources and sinks
 
-The device `?` is a *source*. It takes bits from input and sends them out (one per tick) to the right until input is exhausted. Input is supplied as a string of `0`s and `1`s on the command-line. A program may have multiple inputs mapping to multiple `?` devices. For the purposes of determining which input goes to which source, sources are ordered by their appearance in the program top-to-bottom and left-to-right. If a bits hits a `?`, the bit is destroyed.
+The device `?` is a *source*. It takes bits from input and sends them out (one per tick) to the right until its input is exhausted. A program may have multiple inputs mapping to multiple `?` devices. For the purposes of determining which input goes to which source, sources are ordered by their appearance in the program top-to-bottom and left-to-right. If a bit hits a `?`, the bit is destroyed.
 
 The device `!` is a *sink*. Any bit that hits it is output and removed from the playfield.
 
@@ -46,19 +46,19 @@ A `0` or `1` in the program places a single bit of the specified type on the pla
 
 When any bit hits the device `@`, the program terminates. The program also terminates if there are no bits remaining, either on the playfield or in collectors. The user can also halt execution with Ctrl-C.
 
+All unassigned characters are no-ops.
+
 Two or more bits can occupy the same space at the same time. The ordering between them if they hit a collector, splitter, switch, or sink simultaneously is undefined.
 
-## To run
+## Running a BitCycle program
 
-The interpreter, written in Python 3, is `bitcycle.py`. Invoke it with the name of your code file and your inputs as command-line arguments, like:
+The interpreter, written in Python 3, is `bitcycle.py`. Invoke it with the name of your code file and your inputs as command-line arguments. On Windows:
 
     python bitcycle.py cyclic_tag.btc 110100 10
 
-on Windows or
+On Linux:
 
     ./bitcycle.py cyclic_tag.btc 110100 10
-
-on Linux.
 
 ### Flags
 
@@ -85,7 +85,7 @@ Bits from the source `?` proceed directly into the sink `!`.
 
 An input of `0` is directed up to the `+` in the middle, where it turns left and is output by the sink `!`.
 
-An input of `1` turns right at the `+`. It hits the dupneg `~`, which sends it downward and its negated copy upward. The original `1` bit is directed by the `<` and `^` back to the `+` in an infinite loop. The `0` is dupneg'd a second time; the `0` proceeds rightward off the playfield, and the `1` goes left, then down into the sink to be output.
+An input of `1` turns right at the `+`. It hits the dupneg `~`, which sends it downward and its negated copy upward. The original `1` bit is directed by the `<` and `^` back to the `+`, creating an infinite loop. The `0` is dupneg'd a second time; it turns rightward off the playfield, while its negated copy `1` goes left, then down into the `!` to be output.
 
 ### [Bitwise Cyclic Tag](http://esolangs.org/wiki/Bitwise_Cyclic_Tag) interpreter
 
@@ -106,4 +106,4 @@ We can show that BitCycle is Turing-complete by presenting an implementation of 
     @ /     ^     
     ?>/        B^ 
 
-Use the first input for the program-string and the second for the data-string. In place of a program-string of `0` or `1`, use the equivalent program-strings `00` or `11` respectively. Then the above program will run the BCT program, outputting data-bits as they are deleted, and halting when the data-string is empty.
+The first input is the program-string and the second input is the data-string. This implementation requires the program-string to be at least two bits; in place of a program-string of `0` or `1`, use the equivalent program-strings `00` or `11`, respectively. The above BitCycle code will run the BCT program, outputting data-bits as they are deleted, and halting when the data-string is empty.
