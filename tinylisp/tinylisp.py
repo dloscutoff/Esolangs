@@ -30,22 +30,39 @@ def scan(code):
             yield code[a:i+1]
         i += 1
 
+##def parse(code):
+##    tree = []
+##    if type(code) is str:
+##        # If we're given a raw codestring, scan it before parsing
+##        code = scan(code)
+##    for token in code:
+##        if token == "(":
+##            tree.append(parse(code))
+##        elif token == ")":
+##            return tree
+##        elif token.isdigit():
+##            tree.append(int(token))
+##        else:
+##            tree.append(token)
+##    return tree
+
 def parse(code):
-    tree = []
     if type(code) is str:
         # If we're given a raw codestring, scan it before parsing
         code = scan(code)
-    for token in code:
-        if token == "(":
-            tree.append(parse(code))
-        elif token == ")":
-            return tree
-        elif token.isdigit():
-            tree.append(int(token))
-        else:
-            tree.append(token)
-    return tree
-
+    try:
+        token = next(code)
+    except StopIteration:
+        token = ")"
+    if token == "(":
+        element = parse(code)
+    elif token == ")":
+        return ()
+    elif token.isdigit():
+        element = int(token)
+    else:
+        element = token
+    return (element, parse(code))
 
 # tinylisp built-in functions and macros
 # Key = implementation name; value = tinylisp name
@@ -112,10 +129,11 @@ class Program:
         if type(code) is str:
             code = parse(code)
         # Evaluate each expression in the code and (possibly) display it
-        for expr in code:
+        while code:
+            expr = code[0]
             # Figure out which function the outermost call is
             outerFunction = None
-            if type(expr) is list and type(expr[0]) is str:
+            if type(expr) is tuple and expr != () and type(expr[0]) is str:
                 outerFunction = self.tl_eval(expr[0])
                 if type(outerFunction) is type(self.tl_eval):
                     outerFunction = outerFunction.__name__
@@ -124,80 +142,179 @@ class Program:
             # output--but always show output when running in repl mode
             if self.repl or outerFunction not in topLevelQuietFns:
                 self.tl_disp(result)
+            code = code[1]
 
     def call(self, function, args):
-        if type(function) is not list:
+        if type(function) is not tuple:
             error(self.tl_type(function), "is not callable")
-            return []
-        elif not 2 <= len(function) <= 3:
-            error("%d-length list cannot be interpreted as function or macro"
-                  % len(function))
-            return []
-        elif len(function) == 2:
-            # Regular function: evaluate all the arguments
-            macro = False
-            argnames, code = function
-            args = [self.tl_eval(arg) for arg in args]
-        elif len(function) == 3:
-            # Skip first element of macro list, and don't evaluate
-            # the arguments
+            return ()
+        elif function == ():
+            error("empty list is not callable")
+            return ()
+        elif function[0] == ():
+            # Potential macro
             macro = True
-            argnames, code = function[1:]
+            # Skip first element of macro list (which is nil)
+            if function[1] and function[1][1]:
+                argnames = function[1][0]
+                code = function[1][1][0]
+            else:
+                error("list too short to be interpreted as macro")
+                return ()
+        else:
+            # Potential function
+            macro = False
+            if function[1]:
+                argnames = function[0]
+                code = function[1][0]
+                evaledArgs = []
+                while args:
+                    evaledArgs.append(self.tl_eval(args[0]))
+                    args = args[1]
+            else:
+                error("list too short to be interpreted as function")
+                return ()
         self.depth += 1
         self.names.append({})
         while True:
-            if type(argnames) is list:
-                if len(argnames) == len(args):
-                    for name, val in zip(argnames, args):
+            if type(argnames) is tuple:
+                i = 0
+                if macro:
+                    # Macro args are still in their nested tuple
+                    while args and argnames:
+                        name = argnames[0]
+                        val = args[0]
                         if type(name) is str:
                             self.names[self.depth][name] = val
                         else:
                             error("argument list must contain names, not",
                                   self.tl_type(name))
-                            result = []
+                            result = ()
                             break
+                        argnames = argnames[1]
+                        args = args[1]
+                        i += 1
+                    if argnames and args:
+                        # Must have broken out of the inner loop
+                        break
+                    elif argnames and not args:
+                        # Not enough args for all argnames
+                        msg = "passing " + str(i) + " arguments to a "
+                        while argnames:
+                            argnames = argnames[1]
+                            i += 1
+                        msg += str(i) + " argument macro"
+                        error(msg)
+                        result = ()
+                        break
+                    elif args and not argnames:
+                        # Not enough argnames for all args
+                        msg = str(i) + " argument macro"
+                        while args:
+                            args = args[1]
+                            i += 1
+                        msg = "passing " + str(i) + " arguments to a " + msg
+                        error(msg)
+                        result = ()
+                        break
                 else:
-                    error("passing", len(args), "arguments to a",
-                          len(argnames), "argument function")
-                    result = []
-                    break
+                    # Function args are in the list evaledArgs
+                    while argnames and i < len(evaledArgs):
+                        name = argnames[0]
+                        val = evaledArgs[i]
+                        if type(name) is str:
+                            self.names[self.depth][name] = val
+                        else:
+                            error("argument list must contain names, not",
+                                  self.tl_type(name))
+                            # TBD: do we need to break twice or return here?
+                            result = ()
+                            break
+                        argnames = argnames[1]
+                        i += 1
+                    if argnames and i < len(evaledArgs):
+                        # Must have broken out of the inner loop
+                        break
+                    elif argnames and i >= len(evaledArgs):
+                        # Not enough args for all argnames
+                        while argnames:
+                            argnames = argnames[1]
+                            i += 1
+                        error("passing", len(evaledArgs), "arguments to a",
+                              i, "argument function")
+                        result = ()
+                        break
+                    elif i < len(evaledArgs) and not argnames:
+                        # Not enough argnames for all args
+                        error("passing", len(evaledArgs), "arguments to a",
+                              i, "argument function")
+                        error(msg)
+                        result = ()
+                        break
             elif type(argnames) is str:
                 # Single name, bind entire arglist to it
-                self.names[self.depth][argnames] = args
+                if macro:
+                    # Macro args are still in their nested tuple
+                    self.names[self.depth][argnames] = args
+                else:
+                    # Function args are in the list evaledArgs
+                    args = ()
+                    while evaledArgs:
+                        args = (evaledArgs.pop(), args)
+                    self.names[self.depth][argnames] = args
             else:
                 error("arguments must either be name or list of names, not",
                       self.tl_type(argnames))
-                result = []
+                result = ()
                 break
             
             # Tail-call elimination
             returnExpr = code
             head = None
             # Eliminate any ifs
-            while type(returnExpr) is list and len(returnExpr) > 0:
+            while type(returnExpr) is tuple and len(returnExpr) > 0:
                 head = self.tl_eval(returnExpr[0])
                 if head == self.tl_if:
                     # The head is (some name for) tl_if
-                    test = self.tl_eval(returnExpr[1])
-                    if test == 0 or test == []:
-                        returnExpr = returnExpr[3]
+                    # TODO: check that the list has enough items not to error
+                    # when we do this:
+                    test = self.tl_eval(returnExpr[1][0])
+                    if test == 0 or test == ():
+                        returnExpr = returnExpr[1][1][1][0]
                     else:
-                        returnExpr = returnExpr[2]
+                        returnExpr = returnExpr[1][1][0]
                 else:
                     break
-            if type(head) is list and 2 <= len(head) <= 3:
+            if head and type(head) is tuple:
+                # head should be a user-defined function/macro
                 # Swap out the args from the original call for the updated
                 # args, the function for the new function (which might be
                 # the same function), and loop for the recursive call
-                if len(head) == 2:
-                    macro = False
-                    argnames, code = head
-                    args = [self.tl_eval(arg) for arg in returnExpr[1:]]
-                elif len(head) == 3:
+                args = returnExpr[1]
+                if head[0] == ():
                     macro = True
-                    argnames, code = head[1:]
-                    args = returnExpr[1:]
+                    if head[1] and head[1][1]:
+                        argnames = head[1][0]
+                        code = head[1][1][0]
+                    else:
+                        error("list too short to be interpreted as macro")
+                        result = ()
+                        break
+                else:
+                    macro = False
+                    if head[1]:
+                        argnames = head[0]
+                        code = head[1][0]
+                        evaledArgs = []
+                        while args:
+                            evaledArgs.append(self.tl_eval(args[0]))
+                            args = args[1]
+                    else:
+                        error("list too short to be interpreted as function")
+                        result = ()
+                        break
                 self.names[self.depth] = {}
+                #print("-> Swap to", returnExpr[0]) #!
                 continue
             else:
                 result = self.tl_eval(returnExpr)
@@ -208,37 +325,37 @@ class Program:
 
     @function
     def tl_cons(self, head, tail):
-        if type(tail) is not list:
+        if type(tail) is not tuple:
             error("cannot cons to non-list in tinylisp")
-            return []
+            return ()
         else:
-            return [head] + tail
+            return (head, tail)
 
     @function
     def tl_head(self, lyst):
-        if type(lyst) is not list:
+        if type(lyst) is not tuple:
             error("cannot get head of non-list")
-            return []
-        elif len(lyst) == 0:
-            return []
+            return ()
+        elif lyst == ():
+            return ()
         else:
             return lyst[0]
 
     @function
     def tl_tail(self, lyst):
-        if type(lyst) is not list:
+        if type(lyst) is not tuple:
             error("cannot get tail of non-list")
-            return []
-        elif len(lyst) == 0:
-            return []
+            return ()
+        elif lyst == ():
+            return ()
         else:
-            return lyst[1:]
+            return lyst[1]
 
     @function
     def tl_add2(self, arg1, arg2):
         if type(arg1) is not int or type(arg2) is not int:
             error("cannot add non-integers")
-            return []
+            return ()
         else:
             return arg1 + arg2
 
@@ -246,7 +363,7 @@ class Program:
     def tl_sub2(self, arg1, arg2):
         if type(arg1) is not int or type(arg2) is not int:
             error("cannot subtract non-integers")
-            return []
+            return ()
         else:
             return arg1 - arg2
 
@@ -264,36 +381,46 @@ class Program:
 
     @function
     def tl_eval(self, code, topLevel=False):
-        if type(code) is list:
-            if code == []:
+        if type(code) is tuple:
+            if code == ():
                 # Nil evaluates to itself
-                return []
+                return ()
             # Otherwise, it's a function/macro call
             function = self.tl_eval(code[0])
-            if type(function) is list:
+            if type(function) is tuple:
                 # User-defined function or macro
-                return self.call(function, code[1:])
+                #print("--> Calling", code[0]) #!
+                return self.call(function, code[1])
             elif type(function) is type(self.tl_eval):
                 # Builtin function or macro
+                #print("--> Builtin", function.__name__) #!
                 if function.__name__ in topLevelOnlyFns and not topLevel:
                     error("call to", function.__name__, "cannot be nested")
-                    return []
+                    return ()
                 if function.isMacro:
                     # Macros receive their args unevaluated
-                    args = code[1:]
+                    args = []
+                    code = code[1]
+                    while code:
+                        args.append(code[0])
+                        code = code[1]
                 else:
                     # Functions receive their args evaluated
-                    args = (self.tl_eval(param) for param in code[1:])
+                    args = []
+                    code = code[1]
+                    while code:
+                        args.append(self.tl_eval(code[0]))
+                        code = code[1]
                 try:
                     return function(*args)
                 except TypeError as err:
                     # Wrong number of arguments to builtin
                     error("wrong number of arguments for", function.__name__)
-                    return []
+                    return ()
             else:
                 # Trying to call an int or unevaluated name
                 error("%s is not a function or macro" % function)
-                return []
+                return ()
         elif type(code) is int:
             # Integer literal
             return code
@@ -305,7 +432,13 @@ class Program:
                 return self.names[0][code]
             else:
                 error("referencing undefined name", code)
-                return []
+##                if self.depth > 0: #!
+##                    print("At depth %s, names:" % self.depth,
+##                          self.names[self.depth]) #!
+##                else:
+##                    print("At top level, names:",
+##                          sorted(self.names[self.depth].keys())) #!
+                return ()
         else:
             # Probably a builtin
             return code
@@ -316,7 +449,7 @@ class Program:
             return "Int"
         elif type(value) is str:
             return "Name"
-        elif type(value) is list:
+        elif type(value) is tuple:
             return "List"
         else:
             return "Builtin"
@@ -324,16 +457,14 @@ class Program:
     @function
     def tl_disp(self, value, end="\n"):
         if value is not None and not self.quiet:
-            if value == []:
-                # Empty list
-                write("()")
-            elif type(value) is list:
-                # Non-empty list
+            if type(value) is tuple:
+                # New-style list
                 write("(")
-                self.tl_disp(value[0], end="")
-                for item in value[1:]:
-                    write(" ")
-                    self.tl_disp(item, end="")
+                while value != ():
+                    self.tl_disp(value[0], end="")
+                    value = value[1]
+                    if value != ():
+                        write(" ")
                 write(")")
             elif type(value) is type(self.tl_disp):
                 # One of the builtin functions or macros
@@ -344,13 +475,13 @@ class Program:
                 # Integer or name
                 write(value)
             write(end)
-        return []
+        return ()
 
     @macro
     def tl_def(self, name, value):
         if type(name) is int:
             error("cannot def integer")
-        elif type(name) is list:
+        elif type(name) is tuple:
             error("cannot def list")
         elif name in self.names[0]:
             error("name already in use")
@@ -362,7 +493,7 @@ class Program:
     def tl_if(self, cond, trueval, falseval):
         # Arguments are not pre-evaluated, so cond needs to be evaluated here
         cond = self.tl_eval(cond)
-        if cond == 0 or cond == []:
+        if cond == 0 or cond == ():
             return self.tl_eval(falseval)
         else:
             return self.tl_eval(trueval)
@@ -432,7 +563,8 @@ def repl():
             break
         except Exception as err:
             error(err)
-            break
+            #break
+            raise
         instruction = inputInstruction()
     print("Bye!")
 

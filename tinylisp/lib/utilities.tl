@@ -9,7 +9,7 @@
 (def list (q (args args)))
 
 (def macro
-  (q (nil
+  (q (()
     (params expr)
     (cons nil (list params expr)))))
 
