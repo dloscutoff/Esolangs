@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 
-import sys, os
+import sys
+import os
+from contextlib import contextmanager
+from itertools import zip_longest
 
 whitespace = " \t\n\r"
 symbols = "()"
@@ -30,23 +33,9 @@ def scan(code):
             yield code[a:i+1]
         i += 1
 
-##def parse(code):
-##    tree = []
-##    if type(code) is str:
-##        # If we're given a raw codestring, scan it before parsing
-##        code = scan(code)
-##    for token in code:
-##        if token == "(":
-##            tree.append(parse(code))
-##        elif token == ")":
-##            return tree
-##        elif token.isdigit():
-##            tree.append(int(token))
-##        else:
-##            tree.append(token)
-##    return tree
-
 def parse(code):
+    """Take a series of tokens and turn it into a parse tree.
+The parse tree is in the form of a tinylisp list (i.e. nested tuples)."""
     if type(code) is str:
         # If we're given a raw codestring, scan it before parsing
         code = scan(code)
@@ -63,6 +52,12 @@ def parse(code):
     else:
         element = token
     return (element, parse(code))
+
+def consIter(nestedTuple):
+    "Generator function for iterating over a cons chain of nested tuples."
+    while nestedTuple:
+        yield nestedTuple[0]
+        nestedTuple = nestedTuple[1]
 
 # tinylisp built-in functions and macros
 # Key = implementation name; value = tinylisp name
@@ -108,7 +103,7 @@ def function(pyFn):
     pyFn.isMacro = False
     return pyFn
 
-# Exception that is raised when, in the repl, the user types (quit)
+# Exception that is raised by the (quit) macro
 
 class UserQuit(BaseException): pass
 
@@ -129,8 +124,7 @@ class Program:
         if type(code) is str:
             code = parse(code)
         # Evaluate each expression in the code and (possibly) display it
-        while code:
-            expr = code[0]
+        for expr in consIter(code):
             # Figure out which function the outermost call is
             outerFunction = None
             if type(expr) is tuple and expr != () and type(expr[0]) is str:
@@ -142,7 +136,6 @@ class Program:
             # output--but always show output when running in repl mode
             if self.repl or outerFunction not in topLevelQuietFns:
                 self.tl_disp(result)
-            code = code[1]
 
     def call(self, function, args):
         if type(function) is not tuple:
@@ -167,161 +160,142 @@ class Program:
             if function[1]:
                 argnames = function[0]
                 code = function[1][0]
-                evaledArgs = []
-                while args:
-                    evaledArgs.append(self.tl_eval(args[0]))
-                    args = args[1]
+                evaledArgs = [self.tl_eval(arg) for arg in consIter(args)]
             else:
                 error("list too short to be interpreted as function")
                 return ()
+
+        with self.newScope() as localScope:
+            # Loop while recursive calls are optimizable tail-calls
+            while True:
+                if type(argnames) is tuple:
+                    #i = 0
+                    if macro:
+                        # Macro args are still in their nested tuple
+                        nameIter = consIter(argnames)
+                        valIter = consIter(args)
+                        nameCount = 0
+                        valCount = 0
+                        for name, val in zip_longest(nameIter, valIter):
+                            if name is None:
+                                # Ran out of argument names
+                                valCount += 1
+                            elif val is None:
+                                # Ran out of argument values
+                                nameCount += 1
+                            elif type(name) is str:
+                                self.names[self.depth][name] = val
+                                nameCount += 1
+                                valCount += 1
+                            else:
+                                error("argument list must contain names, not",
+                                      self.tl_type(name))
+                                return ()
+                        if nameCount != valCount:
+                            # Wrong number of arguments
+                            error("passing", valCount, "arguments to",
+                                  nameCount, "argument macro")
+                            return ()
+                    else:
+                        # Function args are in the list evaledArgs
+                        nameIter = consIter(argnames)
+                        nameCount = 0
+                        valCount = len(evaledArgs)
+                        for name, val in zip_longest(nameIter, evaledArgs):
+                            if name is None:
+                                # Ran out of argument names
+                                pass
+                            elif val is None:
+                                # Ran out of argument values
+                                nameCount += 1
+                            elif type(name) is str:
+                                self.names[self.depth][name] = val
+                                nameCount += 1
+                            else:
+                                error("argument list must contain names, not",
+                                      self.tl_type(name))
+                                return ()
+                        if nameCount != valCount:
+                            # Wrong number of arguments
+                            error("passing", valCount, "arguments to",
+                                  nameCount, "argument function")
+                            return ()
+                elif type(argnames) is str:
+                    # Single name, bind entire arglist to it
+                    if macro:
+                        # Macro args are still in their nested tuple
+                        self.names[self.depth][argnames] = args
+                    else:
+                        # Function args are in the list evaledArgs
+                        args = ()
+                        while evaledArgs:
+                            args = (evaledArgs.pop(), args)
+                        self.names[self.depth][argnames] = args
+                else:
+                    error("arguments must either be name or list of names,",
+                          "not", self.tl_type(argnames))
+                    return ()
+                
+                # Tail-call elimination
+                returnExpr = code
+                head = None
+                # Eliminate any ifs
+                while type(returnExpr) is tuple and returnExpr != ():
+                    head = self.tl_eval(returnExpr[0])
+                    if head == self.tl_if:
+                        # The head is (some name for) tl_if
+                        tail = returnExpr[1]
+                        if tail and tail[1] and tail[1][1]:
+                            test = self.tl_eval(tail[0])
+                            if test == 0 or test == ():
+                                returnExpr = tail[1][1][0]
+                            else:
+                                returnExpr = tail[1][0]
+                        else:
+                            error("wrong number of arguments for tl_if")
+                            return ()
+                    else:
+                        break
+                if head and type(head) is tuple:
+                    # head should be a user-defined function/macro
+                    # Swap out the args from the original call for the
+                    # updated args, the function for the new function
+                    # (which might be the same function), and loop for the
+                    # recursive call
+                    args = returnExpr[1]
+                    if head[0] == ():
+                        macro = True
+                        if head[1] and head[1][1]:
+                            argnames = head[1][0]
+                            code = head[1][1][0]
+                        else:
+                            error("list too short to be interpreted as",
+                                  "macro")
+                            return ()
+                    else:
+                        macro = False
+                        if head[1]:
+                            argnames = head[0]
+                            code = head[1][0]
+                            evaledArgs = [self.tl_eval(arg)
+                                          for arg in consIter(args)]
+                        else:
+                            error("list too short to be interpreted as",
+                                  "function")
+                            return ()
+                    self.names[self.depth].clear()
+                else:
+                    return self.tl_eval(returnExpr)
+
+    @contextmanager
+    def newScope(self):
         self.depth += 1
         self.names.append({})
-        while True:
-            if type(argnames) is tuple:
-                i = 0
-                if macro:
-                    # Macro args are still in their nested tuple
-                    while args and argnames:
-                        name = argnames[0]
-                        val = args[0]
-                        if type(name) is str:
-                            self.names[self.depth][name] = val
-                        else:
-                            error("argument list must contain names, not",
-                                  self.tl_type(name))
-                            result = ()
-                            break
-                        argnames = argnames[1]
-                        args = args[1]
-                        i += 1
-                    if argnames and args:
-                        # Must have broken out of the inner loop
-                        break
-                    elif argnames and not args:
-                        # Not enough args for all argnames
-                        msg = "passing " + str(i) + " arguments to a "
-                        while argnames:
-                            argnames = argnames[1]
-                            i += 1
-                        msg += str(i) + " argument macro"
-                        error(msg)
-                        result = ()
-                        break
-                    elif args and not argnames:
-                        # Not enough argnames for all args
-                        msg = str(i) + " argument macro"
-                        while args:
-                            args = args[1]
-                            i += 1
-                        msg = "passing " + str(i) + " arguments to a " + msg
-                        error(msg)
-                        result = ()
-                        break
-                else:
-                    # Function args are in the list evaledArgs
-                    while argnames and i < len(evaledArgs):
-                        name = argnames[0]
-                        val = evaledArgs[i]
-                        if type(name) is str:
-                            self.names[self.depth][name] = val
-                        else:
-                            error("argument list must contain names, not",
-                                  self.tl_type(name))
-                            # TBD: do we need to break twice or return here?
-                            result = ()
-                            break
-                        argnames = argnames[1]
-                        i += 1
-                    if argnames and i < len(evaledArgs):
-                        # Must have broken out of the inner loop
-                        break
-                    elif argnames and i >= len(evaledArgs):
-                        # Not enough args for all argnames
-                        while argnames:
-                            argnames = argnames[1]
-                            i += 1
-                        error("passing", len(evaledArgs), "arguments to a",
-                              i, "argument function")
-                        result = ()
-                        break
-                    elif i < len(evaledArgs) and not argnames:
-                        # Not enough argnames for all args
-                        error("passing", len(evaledArgs), "arguments to a",
-                              i, "argument function")
-                        error(msg)
-                        result = ()
-                        break
-            elif type(argnames) is str:
-                # Single name, bind entire arglist to it
-                if macro:
-                    # Macro args are still in their nested tuple
-                    self.names[self.depth][argnames] = args
-                else:
-                    # Function args are in the list evaledArgs
-                    args = ()
-                    while evaledArgs:
-                        args = (evaledArgs.pop(), args)
-                    self.names[self.depth][argnames] = args
-            else:
-                error("arguments must either be name or list of names, not",
-                      self.tl_type(argnames))
-                result = ()
-                break
-            
-            # Tail-call elimination
-            returnExpr = code
-            head = None
-            # Eliminate any ifs
-            while type(returnExpr) is tuple and len(returnExpr) > 0:
-                head = self.tl_eval(returnExpr[0])
-                if head == self.tl_if:
-                    # The head is (some name for) tl_if
-                    # TODO: check that the list has enough items not to error
-                    # when we do this:
-                    test = self.tl_eval(returnExpr[1][0])
-                    if test == 0 or test == ():
-                        returnExpr = returnExpr[1][1][1][0]
-                    else:
-                        returnExpr = returnExpr[1][1][0]
-                else:
-                    break
-            if head and type(head) is tuple:
-                # head should be a user-defined function/macro
-                # Swap out the args from the original call for the updated
-                # args, the function for the new function (which might be
-                # the same function), and loop for the recursive call
-                args = returnExpr[1]
-                if head[0] == ():
-                    macro = True
-                    if head[1] and head[1][1]:
-                        argnames = head[1][0]
-                        code = head[1][1][0]
-                    else:
-                        error("list too short to be interpreted as macro")
-                        result = ()
-                        break
-                else:
-                    macro = False
-                    if head[1]:
-                        argnames = head[0]
-                        code = head[1][0]
-                        evaledArgs = []
-                        while args:
-                            evaledArgs.append(self.tl_eval(args[0]))
-                            args = args[1]
-                    else:
-                        error("list too short to be interpreted as function")
-                        result = ()
-                        break
-                self.names[self.depth] = {}
-                #print("-> Swap to", returnExpr[0]) #!
-                continue
-            else:
-                result = self.tl_eval(returnExpr)
-                break
-        del self.names[self.depth]
-        self.depth -= 1
-        return result
+        try:
+            yield self.names[self.depth]
+        finally:
+            self.names.pop()
+            self.depth -= 1
 
     @function
     def tl_cons(self, head, tail):
@@ -372,8 +346,8 @@ class Program:
         try:
             return int(arg1 < arg2)
         except TypeError:
-            error("unorderable types: %s and %s"
-                  % (self.tl_type(arg1), self.tl_type(arg2)))
+            error("unorderable types:", self.tl_type(arg1), "and",
+                  self.tl_type(arg2))
 
     @function
     def tl_eq2(self, arg1, arg2):
@@ -389,28 +363,18 @@ class Program:
             function = self.tl_eval(code[0])
             if type(function) is tuple:
                 # User-defined function or macro
-                #print("--> Calling", code[0]) #!
                 return self.call(function, code[1])
             elif type(function) is type(self.tl_eval):
                 # Builtin function or macro
-                #print("--> Builtin", function.__name__) #!
                 if function.__name__ in topLevelOnlyFns and not topLevel:
                     error("call to", function.__name__, "cannot be nested")
                     return ()
                 if function.isMacro:
                     # Macros receive their args unevaluated
-                    args = []
-                    code = code[1]
-                    while code:
-                        args.append(code[0])
-                        code = code[1]
+                    args = consIter(code[1])
                 else:
                     # Functions receive their args evaluated
-                    args = []
-                    code = code[1]
-                    while code:
-                        args.append(self.tl_eval(code[0]))
-                        code = code[1]
+                    args = (self.tl_eval(arg) for arg in consIter(code[1]))
                 try:
                     return function(*args)
                 except TypeError as err:
@@ -419,7 +383,7 @@ class Program:
                     return ()
             else:
                 # Trying to call an int or unevaluated name
-                error("%s is not a function or macro" % function)
+                error(function, "is not a function or macro")
                 return ()
         elif type(code) is int:
             # Integer literal
@@ -432,12 +396,6 @@ class Program:
                 return self.names[0][code]
             else:
                 error("referencing undefined name", code)
-##                if self.depth > 0: #!
-##                    print("At depth %s, names:" % self.depth,
-##                          self.names[self.depth]) #!
-##                else:
-##                    print("At top level, names:",
-##                          sorted(self.names[self.depth].keys())) #!
                 return ()
         else:
             # Probably a builtin
@@ -457,14 +415,18 @@ class Program:
     @function
     def tl_disp(self, value, end="\n"):
         if value is not None and not self.quiet:
-            if type(value) is tuple:
-                # New-style list
-                write("(")
-                while value != ():
-                    self.tl_disp(value[0], end="")
-                    value = value[1]
-                    if value != ():
+            if value == ():
+                write("()")
+            elif type(value) is tuple:
+                # List (as nested tuple)
+                atBeginning = True
+                for item in consIter(value):
+                    if atBeginning:
+                        write("(")
+                        atBeginning = False
+                    else:
                         write(" ")
+                    self.tl_disp(item, end="")
                 write(")")
             elif type(value) is type(self.tl_disp):
                 # One of the builtin functions or macros
@@ -563,8 +525,7 @@ def repl():
             break
         except Exception as err:
             error(err)
-            #break
-            raise
+            break
         instruction = inputInstruction()
     print("Bye!")
 
@@ -591,6 +552,7 @@ Builtin functions and macros:
      item in it, or nil if given nil.
 - t, tail (cdr, in Lisp terminology). Takes a list and returns a new
      list containing all but the first item, or nil if given nil.
+- a, add. Takes two integers and returns the first plus the second.
 - s, subtract. Takes two integers and returns the first minus the
      second.
 - l, less than. Takes two integers; returns 1 if the first is less than
@@ -606,6 +568,8 @@ Builtin functions and macros:
 - d, def (macro). Takes a name and an expression. Evaluates the
      expression and binds it to the name at global scope, then returns
      the name. A name cannot be redefined once it has been defined.
+- type. Takes a value and returns its type, one of Int, Name, List, or
+     Builtin.
 - disp. Takes a value and writes it to stdout.
 - load (macro). Takes a filename and evaluates that file as code.
 
@@ -617,8 +581,13 @@ to manipulate unevaluated code.)
   should be a list of parameter names. Alternately, it can be a single
   name, in which case it will receive a list of all arguments. The
   second item should be the return expression.
-- To create a macro, proceed as with a function, but add a third item
-  (nil, by convention) at the beginning of the list.
+- To create a macro, proceed as with a function, but add nil at the
+  beginning of the list.
+
+Use (load library) to access the standard library. It includes long
+names for builtins (e.g. cons for c), convenience functions and macros
+(list, lambda, etc.), list manipulation, metafunctions, and integer
+arithmetic.
 
 Special commands for the interactive prompt:
 
