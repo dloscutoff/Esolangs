@@ -7,14 +7,17 @@
     (func arglist)
     (eval (cons (q func) (quote-each arglist)))))
 
-(def map
+(def _map
   (lambda
-    (func ls)
+    (func ls accum)
     (if ls
-      (cons
-        (apply func (list (head ls)))
-        (map func (tail ls)))
-      nil)))
+      (_map
+        func
+        (tail ls)
+        (cons (apply func (list (head ls))) accum))
+      (reverse accum))))
+
+(def map (lambda (func ls) (_map func ls nil)))
 
 (def _foldl
   (lambda
@@ -54,4 +57,13 @@
         (q _chain-last)
         (cons
           (insert-end (q arg) (head args))
-          (tail args)))))))
+          (tail args))))))
+
+(comment Example use of substitute to emulate closures: returns a single-argument function that adds n to its argument)
+(def add-n
+  (lambda
+    (n)
+    (substitute
+      (q n)
+      n
+      (lambda (x) (add2 n x)))))
