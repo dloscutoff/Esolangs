@@ -114,7 +114,7 @@ There are three ways of running tinylisp code: from a file, from the interactive
 
 - To run code from one or more files, pass the filenames as command-line arguments to the interpreter: `python3 tinylisp.py file1.tl file2.tl`.
 - To run code from the interactive prompt, run the interpreter without command-line arguments.
-- To run code at Try It Online, [click here](https://tio.run/nexus/tinylisp).
+- To run code at Try It Online, [click here](https://tio.run/#tinylisp).
 
 The interactive prompt provides these additional commands:
 

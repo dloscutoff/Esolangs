@@ -26,8 +26,7 @@
 (def htail (lambda (ls) (head (tail ls))))
 
 (def _and
-  (lambda
-    (ls)
+  (lambda (ls)
     (if ls
       (if (eval (head ls))
         (_and (tail ls))
@@ -37,8 +36,7 @@
 (def and (macro args (_and args)))
 
 (def _or
-  (lambda
-    (ls)
+  (lambda (ls)
     (if ls
       (if (eval (head ls))
         1

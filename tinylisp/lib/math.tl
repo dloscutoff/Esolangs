@@ -10,8 +10,7 @@
 (def inc (lambda (n) (add2 1 n)))
 
 (def -
-  (lambda
-    args
+  (lambda args
     (if args
       (if (tail args)
         (_foldl sub2 (head args) (tail args))
@@ -19,20 +18,17 @@
       0)))
 
 (def +
-  (lambda
-    args
+  (lambda args
     (_foldl add2 (head args) (tail args))))
 
 (def _mul2
-  (lambda
-    (val reps accum)
+  (lambda (val reps accum)
     (if reps
       (_mul2 val (dec reps) (add2 accum val))
       accum)))
 
 (def mul2
-  (lambda
-    (arg1 arg2)
+  (lambda (arg1 arg2)
     (if (less? arg2 0)
       (mul2 (neg arg1) (neg arg2))
       (if (less? arg1 0)
@@ -44,15 +40,13 @@
 (def * (lambda args (foldl-default mul2 args 1)))
 
 (def _div2
-  (lambda
-    (dividend divisor quotient)
+  (lambda (dividend divisor quotient)
     (if (less? dividend divisor)
       quotient
       (_div2 (sub2 dividend divisor) divisor (inc quotient)))))
 
 (def div2
-  (lambda
-    (arg1 arg2)
+  (lambda (arg1 arg2)
     (if arg2
       (if (less? arg2 0)
         (_div2 (neg arg1) (neg arg2) 0)
@@ -60,8 +54,7 @@
       nil)))
 
 (def /
-  (lambda
-    args
+  (lambda args
     (if args
       (if (tail args)
         (_foldl div2 (head args) (tail args))
@@ -69,8 +62,7 @@
       1)))
 
 (def mod
-  (lambda
-    (arg1 arg2)
+  (lambda (arg1 arg2)
     (if arg2
       (if (less? arg2 0)
         (neg (mod (neg arg1) (neg arg2)))
@@ -80,8 +72,7 @@
       nil)))
 
 (def even?
-  (lambda
-    (num)
+  (lambda (num)
     (if (less? num 0)
       (even? (neg num))
       (if (less? num 2)
@@ -89,12 +80,27 @@
         (even? (sub2 num 2))))))
 
 (def odd?
-  (lambda
-    (num)
+  (lambda (num)
     (if (less? num 0)
       (odd? (neg num))
       (if (less? num 2)
         (equal? num 1)
         (odd? (sub2 num 2))))))
 
-(def factorial (lambda (num) (apply * (1to num))))
+(def max2
+  (lambda (value1 value2)
+    (if (less? value1 value2)
+      value2
+      value1)))
+
+(def max (lambda (ls) (foldl max2 ls)))
+
+(def min2
+  (lambda (value1 value2)
+    (if (less? value1 value2)
+      value1
+      value2)))
+
+(def min (lambda (ls) (foldl min2 ls)))
+
+(def factorial (lambda (num) (foldl-default mul2 (1to num) 1)))

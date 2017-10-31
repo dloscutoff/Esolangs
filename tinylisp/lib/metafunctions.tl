@@ -3,13 +3,11 @@
 (load lists)
 
 (def apply
-  (lambda
-    (func arglist)
+  (lambda (func arglist)
     (eval (cons (q func) (quote-each arglist)))))
 
 (def _map
-  (lambda
-    (func ls accum)
+  (lambda (func ls accum)
     (if ls
       (_map
         func
@@ -19,9 +17,21 @@
 
 (def map (lambda (func ls) (_map func ls nil)))
 
+(def _filter
+  (lambda (func ls accum)
+    (if ls
+      (_filter
+        func
+        (tail ls)
+        (if (apply func (list (head ls)))
+          (cons (head ls) accum)
+          accum))
+      (reverse accum))))
+
+(def filter (lambda (func ls) (_filter func ls nil)))
+
 (def _foldl
-  (lambda
-    (func accum ls)
+  (lambda (func accum ls)
     (if ls
       (_foldl func
         (apply func (list accum (head ls)))
@@ -29,8 +39,7 @@
       accum)))
 
 (def foldl-default
-  (lambda
-    (func ls default)
+  (lambda (func ls default)
     (if ls
       (_foldl func (head ls) (tail ls))
       default)))
@@ -38,8 +47,7 @@
 (def foldl (lambda (func ls) (foldl-default func ls nil)))
 
 (def _chain-last
-  (macro
-    args
+  (macro args
     (if (nil? (tail args))
       (list (q (arg)) (head args))
       (eval
@@ -50,8 +58,7 @@
             (ttail args)))))))
 
 (def chain-last
-  (macro
-    args
+  (macro args
     (eval
       (cons
         (q _chain-last)
@@ -59,11 +66,10 @@
           (insert-end (q arg) (head args))
           (tail args))))))
 
-(comment Example use of substitute to emulate closures: returns a single-argument function that adds n to its argument)
+(comment Example use of substitute to emulate closures: returns a single-argument function that adds a number to its argument)
 (def add-n
-  (lambda
-    (n)
+  (lambda (num)
     (substitute
-      (q n)
-      n
-      (lambda (x) (add2 n x)))))
+      (q num)
+      num
+      (lambda (x) (add2 num x)))))

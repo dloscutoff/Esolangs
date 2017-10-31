@@ -2,8 +2,7 @@
 (load utilities)
 
 (def _length
-  (lambda
-    (ls accum)
+  (lambda (ls accum)
     (if ls
       (_length (tail ls) (add2 1 accum))
       accum)))
@@ -11,8 +10,7 @@
 (def length (lambda (ls) (_length ls 0)))
 
 (def nth
-  (lambda
-    (ls index)
+  (lambda (ls index)
     (if (equal? (type index) Int)
       (if (less? index 0)
         nil
@@ -22,8 +20,7 @@
       nil)))
 
 (def _reverse
-  (lambda
-    (ls accum)
+  (lambda (ls accum)
     (if ls
       (_reverse (tail ls) (cons (head ls) accum))
       accum)))
@@ -31,13 +28,11 @@
 (def reverse (lambda (ls) (_reverse ls nil)))
 
 (def concat
-  (lambda
-    (ls-front ls-back)
+  (lambda (ls-front ls-back)
     (_reverse (reverse ls-front) ls-back)))
 
 (def _insert
-  (lambda
-    (val ls-front ls-back index)
+  (lambda (val ls-front ls-back index)
     (if index
       (_insert
         val
@@ -49,8 +44,7 @@
         (cons val ls-back)))))
 
 (def insert
-  (lambda
-    (val ls index)
+  (lambda (val ls index)
     (if (equal? (type index) Int)
       (if (less? index 0)
         nil
@@ -58,13 +52,11 @@
       nil)))
 
 (def insert-end
-  (lambda
-    (val ls)
+  (lambda (val ls)
     (reverse (cons val (reverse ls)))))
 
 (def _quote-each
-  (lambda
-    (ls accum)
+  (lambda (ls accum)
     (if ls
       (_quote-each
         (tail ls)
@@ -74,8 +66,7 @@
 (def quote-each (lambda (ls) (_quote-each ls nil)))
 
 (def _substitute
-  (lambda
-    (name value ls accum)
+  (lambda (name value ls accum)
     (if ls
       (_substitute
         name
@@ -85,8 +76,7 @@
       (reverse accum))))
 
 (def substitute
-  (lambda
-    (name value original)
+  (lambda (name value original)
      (if (equal? (type original) List)
        (if (equal? (head original) (q q))
          original
@@ -96,15 +86,13 @@
         original))))
 
 (def _inclusive-range
-  (lambda
-    (accum lower upper)
+  (lambda (accum lower upper)
     (if (less? upper lower)
        accum
        (_inclusive-range (cons upper accum) lower (sub2 upper 1)))))
 
 (def inclusive-range
-  (lambda
-    (lower upper)
+  (lambda (lower upper)
     (_inclusive-range nil lower upper)))
 
 (def 1to
@@ -112,8 +100,23 @@
     (_inclusive-range nil 1 num)))
 
 (def range
-  (lambda
-    args
+  (lambda args
     (if (nil? (tail args))
       (_inclusive-range nil 0 (sub2 (head args) 1))
       (_inclusive-range nil (head args) (sub2 (htail args) 1)))))
+
+(def all
+  (lambda (ls)
+    (if ls
+      (if (head ls)
+        (all (tail ls))
+        0)
+      1)))
+
+(def any
+  (lambda (ls)
+    (if ls
+      (if (head ls)
+        1
+        (any (tail ls)))
+      0)))
