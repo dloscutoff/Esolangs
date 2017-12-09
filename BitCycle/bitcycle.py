@@ -1,21 +1,33 @@
 #!/usr/bin/python3
 
-import os, sys, time, argparse
+import os
+import sys
+import time
+import argparse
 
 # Any letter except V is acceptable as a collector name
 collectorNames = "ABCDEFGHIJKLMNOPQRSTUWXYZ"
+
+# Separator for decimal I/O formats
+SEPARATOR = ","
+
+# Magic numbers
+RAW = 0
+UNSIGNED_UNARY = 1
+SIGNED_UNARY = 2
+UNSIGNED_BINARY = 3
+SIGNED_BINARY = 4
 STEP = -1
 
 
 class Playfield:
-    def __init__(self, codeLines, inputs, outputFunction=None):
+    def __init__(self, codeLines, inputs, ioFormat=RAW):
         self.height = len(codeLines)
         self.width = max(map(len, codeLines))
         self.collectors = {}
         self.openCollectors = []
         self.sources = []
-        self.outputFunction = outputFunction
-        self.outputBuffer = ""
+        self.sinks = []
         self.activeBits = []
         self.grid = []
         for y in range(self.height):
@@ -35,16 +47,21 @@ class Playfield:
                         # A question mark is a source
                         if inputs:
                             data = inputs.pop(0)
-                            source = Source(data, x, y)
+                            source = Source(x, y, data, ioFormat)
                             self.sources.append(source)
                             row.append(source)
                         else:
                             # Not enough inputs to give data to this source
                             # TBD: error message?
-                            row.append(Source("", x, y))
+                            row.append(Source(x, y, ""))
+                    elif char == "!":
+                        # An exclamation point is a sink
+                        sink = Sink(x, y, ioFormat)
+                        self.sinks.append(sink)
+                        row.append(sink)
                     elif char in "01":
                         # A 0 or 1 is a bit
-                        bit = Bit(int(char), x, y)
+                        bit = Bit(x, y, int(char))
                         self.activeBits.append(bit)
                         row.append(" ")
                     else:
@@ -73,7 +90,7 @@ class Playfield:
                     # No output means that source is empty; remove it from
                     # the sources list
                     indicesToRemove.append(index)
-            for index in indicesToRemove[::-1]:
+            for index in reversed(indicesToRemove):
                 # Iterate over the indices to remove from largest to smallest
                 # so that removing smaller indices doesn't modify the
                 # larger ones
@@ -81,15 +98,15 @@ class Playfield:
         
         if self.openCollectors:
             indicesToRemove = []
-            for index, coll in enumerate(self.openCollectors):
-                outBit = coll.tick()
+            for index, collector in enumerate(self.openCollectors):
+                outBit = collector.tick()
                 if outBit:
                     self.activeBits.append(outBit)
                 else:
                     # No output means that collector is empty; deactivate it
-                    coll.open = False
+                    collector.open = False
                     indicesToRemove.append(index)
-            for index in indicesToRemove[::-1]:
+            for index in reversed(indicesToRemove):
                 # Iterate over the indices to remove from largest to smallest
                 # so that removing smaller indices doesn't modify the
                 # larger ones
@@ -109,10 +126,8 @@ class Playfield:
                         # Add the bit to the collector's queue
                         device.enqueue(bit)
                         indicesToRemove.append(index)
-                    elif device == "!":
-                        # TODO: add multiple output options, probably make
-                        # sinks their own class
-                        self.output(bit.value)
+                    elif type(device) is Sink:
+                        device.enqueue(bit)
                         indicesToRemove.append(index)
                     elif device in [">", "}"]:
                         bit.dx, bit.dy = 1, 0
@@ -140,7 +155,7 @@ class Playfield:
                         # Turn original bit right, create new one with
                         # opposite value going opposite direction
                         bit.dx, bit.dy = -bit.dy, bit.dx
-                        newBits.append(Bit(1 - bit.value, bit.x, bit.y,
+                        newBits.append(Bit(bit.x, bit.y, 1 - bit.value,
                                            -bit.dx, -bit.dy))
                     elif device == "@":
                         # Terminate immediately
@@ -155,7 +170,7 @@ class Playfield:
                 else:
                     # Bit went outside playfield; delete it
                     indicesToRemove.append(index)
-            for index in indicesToRemove[::-1]:
+            for index in reversed(indicesToRemove):
                 # Iterate over the indices to remove from largest to smallest
                 # so that removing smaller indices doesn't modify the
                 # larger ones
@@ -189,11 +204,6 @@ class Playfield:
                 elif device in ["{", "}"]:
                     self.grid[y][x] = "="
 
-    def output(self, data):
-        self.outputBuffer += str(data)
-        if self.outputFunction:
-            self.outputFunction(data)
-
 
 class Collector:
     def __init__(self, letter):
@@ -216,17 +226,60 @@ class Collector:
                 return bit
             else:
                 self.open = False
-        return None
+                return None
+        else:
+            return None
 
     def enqueue(self, bit):
         self.queue.append(bit)
 
 
 class Source:
-    def __init__(self, data, x, y):
-        self.data = iter(data)
+    def __init__(self, x, y, data, ioFormat=RAW):
         self.x = x
         self.y = y
+        self.ioFormat = ioFormat
+        if ioFormat == RAW:
+            # Inputs are already in bitstring form
+            self.data = iter(data)
+        elif ioFormat == UNSIGNED_UNARY:
+            # Nonnegative integers become runs of 1's; separators become 0's
+            decimalNumbers = data.split(SEPARATOR)
+            unaryNumbers = []
+            for decimalNumber in decimalNumbers:
+                try:
+                    decimalNumber = int(decimalNumber)
+                except ValueError:
+                    # Not an integer
+                    # TODO: error?
+                    continue
+                if decimalNumber < 0:
+                    # Negative integer
+                    # TODO: error?
+                    continue
+                unaryNumbers.append("1" * decimalNumber)
+            self.data = iter("0".join(unaryNumbers))
+        elif ioFormat == SIGNED_UNARY:
+            # Integers become runs of 1's, with 0 prepended to
+            # nonpositive numbers; separators become 0's
+            decimalNumbers = data.split(SEPARATOR)
+            unaryNumbers = []
+            for decimalNumber in decimalNumbers:
+                try:
+                    decimalNumber = int(decimalNumber)
+                except ValueError:
+                    # Not an integer
+                    # TODO: error?
+                    continue
+                if decimalNumber <= 0:
+                    unaryNumber = "0"
+                else:
+                    unaryNumber = ""
+                unaryNumber += "1" * abs(decimalNumber)
+                unaryNumbers.append(unaryNumber)
+            self.data = iter("0".join(unaryNumbers))
+        else:
+            raise NotImplemented("Unknown I/O format: %s" % self.ioFormat)
 
     def __str__(self):
         return "?"
@@ -240,12 +293,73 @@ class Source:
         except StopIteration:
             return None
         else:
-            bit = Bit(int(bitValue), self.x, self.y)
+            bit = Bit(self.x, self.y, int(bitValue))
             return bit
 
+
+class Sink:
+    def __init__(self, x, y, ioFormat=RAW):
+        self.x = x
+        self.y = y
+        self.ioFormat = ioFormat
+        self.queue = []
+        self.output = ""
+        self.rawOutput = ""
+
+    def __str__(self):
+        return "!"
+
+    def tick(self):
+        pass
+
+    def enqueue(self, bit):
+        self.rawOutput += str(bit)
+        if self.ioFormat == RAW:
+            self.output += str(bit)
+        elif self.ioFormat == UNSIGNED_UNARY:
+            if bit.value == 0:
+                # 0 is separator; output the current queue value
+                self.output += str(len(self.queue))
+                self.output += SEPARATOR
+                self.queue = []
+            else:
+                # Add a bit to the current queue value
+                self.queue.append(bit)
+        elif self.ioFormat == SIGNED_UNARY:
+            if bit.value == 0 and self.queue:
+                # 0 with nonempty queue is separator; output the current
+                # queue value
+                if self.queue[0].value == 0:
+                    # A leading 0 on the value is a sign bit
+                    self.queue.pop(0)
+                    if self.queue:
+                        # Output a minus sign unless the number was just
+                        # the 0 bit (in which case it represents 0)
+                        self.output += "-"
+                self.output += str(len(self.queue))
+                self.output += SEPARATOR
+                self.queue = []
+            else:
+                # 0 with empty queue is sign bit; 1 is always part of a
+                # number; add to the current queue value
+                self.queue.append(bit)
+        else:
+            raise NotImplemented("Unknown I/O format: %s" % self.ioFormat)
+
+    def finalize(self):
+        if self.ioFormat == UNSIGNED_UNARY:
+            self.output += str(len(self.queue))
+        elif self.ioFormat == SIGNED_UNARY:
+            if self.queue[0].value == 0:
+                self.queue.pop(0)
+                if self.queue:
+                    self.output += "-"
+            self.output += str(len(self.queue))
+
+
 class Bit:
-    def __init__(self, value, x, y, dx=1, dy=0):
-        self.value = int(value)
+    def __init__(self, x, y, value, dx=1, dy=0):
+        self.value = int(bool(value))
         self.x = x
         self.y = y
         self.dx = dx
@@ -255,25 +369,25 @@ class Bit:
         self.x += self.dx
         self.y += self.dy
 
+    def __str__(self):
+        return str(self.value)
 
-def run(codeLines, pause, *inputs):
-    if pause == 0:
-        # No-pause mode: display output as it is generated
-        outputFunction = lambda *args: print(*args, end="", flush=True)
-    elif pause == STEP:
+
+def run(codeLines, pause, ioFormat, *inputs):
+    if pause == STEP:
         # Manual step mode: buffer output and display the buffer at each step
-        outputFunction = None
         print("Press enter to step; type anything else or Ctrl-C to stop.")
         input()
-    else:
-        # Pause mode: buffer output and display the buffer at each tick
-        outputFunction = None
-    playfield = Playfield(codeLines, list(inputs), outputFunction)
+    playfield = Playfield(codeLines, list(inputs), ioFormat)
     try:
         while True:
             if pause != 0:
                 print(playfield)
-                print("Output:", playfield.outputBuffer)
+                if len(playfield.sinks) == 1:
+                    print("Sink:", playfield.sinks[0].rawOutput)
+                else:
+                    for sinkNum, sink in enumerate(playfield.sinks):
+                        print("Sink %d:" % (sinkNum + 1), sink.rawOutput)
                 if pause == STEP:
                     # Manual step mode
                     if input() != "":
@@ -283,6 +397,13 @@ def run(codeLines, pause, *inputs):
             playfield.tick()
     except (StopIteration, KeyboardInterrupt, EOFError):
         pass
+    if pause != 0:
+        print()
+        print("Output:")
+    for sink in playfield.sinks:
+        sink.finalize()
+        print(sink.output)
+
 
 testCode = r"""
  v        <
@@ -302,26 +423,40 @@ testCode = r"""
 """.splitlines()
 testArgs = ["110100", "10"]
 testPause = 0.15
+testIOFormat = RAW
 
 if __name__ == "__main__":
-    code = testCode
-    args = testArgs
-    pause = testPause
     if len(sys.argv) > 1:
         # Filename provided on command-line
         argparser = argparse.ArgumentParser()
-        argparser.add_argument("-p",
-                               "--pause",
-                               help="how long to pause between ticks")
-        argparser.add_argument("-s",
-                               "--step",
-                               help="execute one step at a time",
+        pauseOptions = argparser.add_mutually_exclusive_group()
+        pauseOptions.add_argument("-p",
+                                  "--pause",
+                                  help="how long to pause between ticks")
+        pauseOptions.add_argument("-s",
+                                  "--step",
+                                  help="execute one step at a time",
+                                  action="store_true")
+        ioOptions = argparser.add_mutually_exclusive_group()
+        ioOptions.add_argument("-u",
+                               "--unsigned-unary",
+                               help="render decimal I/O as unsigned unary",
                                action="store_true")
+        ioOptions.add_argument("-U",
+                               "--signed-unary",
+                               help="render decimal I/O as signed unary",
+                               action="store_true")
+        # Flags TODO:
+        # -b  Translate decimal I/O as unsigned binary (little-endian)
+        # -B width  Translate decimal I/O as fixed-width twos' complement
+        #           signed binary (little-endian)
+        # (Possibly something for ASCII I/O?)
         argparser.add_argument("filename",
                                help="name of code file")
         argparser.add_argument("args",
                                help="inputs to the program",
                                nargs="*")
+        
         options = argparser.parse_args()
         if options.filename:
             try:
@@ -333,7 +468,7 @@ if __name__ == "__main__":
                 args = options.args
         pause = 0
         if options.step:
-            pause = -1
+            pause = STEP
         elif options.pause:
             try:
                 pause = float(options.pause)
@@ -342,6 +477,15 @@ if __name__ == "__main__":
             else:
                 if pause < 0:
                     pause = 0
-    
-    run(code, pause, *args)
+        ioFormat = RAW
+        if options.unsigned_unary:
+            ioFormat = UNSIGNED_UNARY
+        elif options.signed_unary:
+            ioFormat = SIGNED_UNARY
+    else:
+        code = testCode
+        pause = testPause
+        ioFormat = testIOFormat
+        args = testArgs
+    run(code, pause, ioFormat, *args)
 
