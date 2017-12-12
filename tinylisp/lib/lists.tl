@@ -55,6 +55,54 @@
   (lambda (val ls)
     (reverse (cons val (reverse ls)))))
 
+(def contains?
+  (lambda (ls item)
+    (if ls
+      (if (equal? (head ls) item)
+        1
+        (contains? (tail ls) item))
+      0)))
+
+(def _count-occurrences
+  (lambda (ls item count)
+    (if ls
+      (if (equal? (head ls) item)
+        (_count-occurrences (tail ls) item (inc count))
+        (_count-occurrences (tail ls) item count))
+      count)))
+
+(def count-occurrences (lambda (ls item) (_count-occurrences ls item 0)))
+
+(def _first-index
+  (lambda (ls item index)
+    (if ls
+      (if (equal? (head ls) item)
+        index
+        (_first-index (tail ls) item (inc index)))
+      nil)))
+
+(def first-index (lambda (ls item) (_first-index ls item 0)))
+
+(def _last-index
+  (lambda (ls item index result-index)
+    (if ls
+      (if (equal? (head ls) item)
+        (_last-index (tail ls) item (inc index) index)
+        (_last-index (tail ls) item (inc index) result-index))
+      result-index)))
+
+(def last-index (lambda (ls item) (_last-index ls item 0 nil)))
+
+(def _all-indices
+  (lambda (ls item index accum)
+    (if ls
+      (if (equal? (head ls) item)
+        (_all-indices (tail ls) item (inc index) (cons index accum))
+        (_all-indices (tail ls) item (inc index) accum))
+      (reverse accum))))
+
+(def all-indices (lambda (ls item) (_all-indices ls item 0 nil)))
+
 (def _quote-each
   (lambda (ls accum)
     (if ls

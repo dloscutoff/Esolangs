@@ -3,11 +3,11 @@
 (load metafunctions)
 (load lists)
 
-(def neg (lambda (n) (sub2 0 n)))
-
-(def dec (lambda (n) (sub2 n 1)))
-
-(def inc (lambda (n) (add2 1 n)))
+(def abs
+  (lambda (num)
+    (if (negative? num)
+      (neg num)
+      num)))
 
 (def -
   (lambda args
@@ -17,9 +17,9 @@
         (neg (head args)))
       0)))
 
-(def +
-  (lambda args
-    (_foldl add2 (head args) (tail args))))
+(def + (lambda args (foldl-default add2 args 0)))
+
+(def sum (lambda (ls) (foldl-default add2 ls 0)))
 
 (def _mul2
   (lambda (val reps accum)
@@ -28,29 +28,37 @@
       accum)))
 
 (def mul2
-  (lambda (arg1 arg2)
-    (if (less? arg2 0)
-      (mul2 (neg arg1) (neg arg2))
-      (if (less? arg1 0)
-        (neg (mul2 (neg arg1) arg2))
-        (if (less? arg1 arg2)
-          (_mul2 arg2 arg1 0)
-          (_mul2 arg1 arg2 0))))))
+  (lambda (factor1 factor2)
+    (if (less? (abs factor1) (abs factor2))
+      (mul2 factor2 factor1)
+      (if (negative? factor2)
+        (_mul2 (neg factor1) (neg factor2) 0)
+        (_mul2 factor1 factor2 0)))))
 
 (def * (lambda args (foldl-default mul2 args 1)))
 
-(def _div2
+(def product (lambda (ls) (foldl-default mul2 ls 1)))
+
+(def _div2-positive
   (lambda (dividend divisor quotient)
     (if (less? dividend divisor)
       quotient
-      (_div2 (sub2 dividend divisor) divisor (inc quotient)))))
+      (_div2-positive (sub2 dividend divisor) divisor (inc quotient)))))
+
+(def _div2-negative
+  (lambda (dividend divisor quotient)
+    (if (negative? dividend)
+      (_div2-negative (add2 dividend divisor) divisor (dec quotient))
+      quotient)))
 
 (def div2
-  (lambda (arg1 arg2)
-    (if arg2
-      (if (less? arg2 0)
-        (_div2 (neg arg1) (neg arg2) 0)
-        (_div2 arg1 arg2 0))
+  (lambda (dividend divisor)
+    (if divisor
+      (if (negative? divisor)
+        (div2 (neg dividend) (neg divisor))
+        (if (negative? dividend)
+          (_div2-negative dividend divisor 0)
+          (_div2-positive dividend divisor 0)))
       nil)))
 
 (def /
@@ -61,31 +69,41 @@
         (div2 1 (head args)))
       1)))
 
+(def _mod-positive
+  (lambda (num modulus)
+    (if (less? num modulus)
+      num
+      (_mod-positive (sub2 num modulus) modulus))))
+
+(def _mod-negative
+  (lambda (num modulus)
+    (if (negative? num)
+      (_mod-negative (add2 num modulus) modulus)
+      num)))
+
 (def mod
-  (lambda (arg1 arg2)
-    (if arg2
-      (if (less? arg2 0)
-        (neg (mod (neg arg1) (neg arg2)))
-        (if (less? arg1 arg2)
-          arg1
-          (mod (sub2 arg1 arg2) arg2)))
+  (lambda (num modulus)
+    (if modulus
+      (if (positive? modulus)
+        (if (negative? num)
+          (_mod-negative num modulus)
+          (_mod-positive num modulus))
+        (neg (mod (neg num) (neg modulus))))
       nil)))
 
-(def even?
-  (lambda (num)
-    (if (less? num 0)
-      (even? (neg num))
-      (if (less? num 2)
-        (zero? num)
-        (even? (sub2 num 2))))))
+(def divides?
+  (lambda (divisor multiple)
+    (if (negative? divisor)
+      (divides? (neg divisor) multiple)
+      (if (negative? multiple)
+        (divides? divisor (neg multiple))
+        (if (less? multiple divisor)
+          (zero? multiple)
+          (divides? (sub2 multiple divisor)))))))
 
-(def odd?
-  (lambda (num)
-    (if (less? num 0)
-      (odd? (neg num))
-      (if (less? num 2)
-        (equal? num 1)
-        (odd? (sub2 num 2))))))
+(def even? (lambda (num) (divides? 2 num)))
+
+(def odd? (lambda (num) (not (divides? 2 num))))
 
 (def max2
   (lambda (value1 value2)
@@ -104,3 +122,35 @@
 (def min (lambda (ls) (foldl min2 ls)))
 
 (def factorial (lambda (num) (foldl-default mul2 (1to num) 1)))
+
+(def _prime?
+  (lambda (num factor)
+    (if (less? factor num)
+      (if (divides? factor num)
+        0
+        (_prime? num (inc factor)))
+      1)))
+
+(def prime?
+  (lambda (num)
+    (if (equal? num (neg 1))
+      1
+      (if (less? num 2)
+        0
+        (_prime? num 2)))))
+
+(def _prime-factors
+  (lambda (num test-factor accum)
+    (if (less? test-factor num)
+      (if (divides? test-factor num)
+        (_prime-factors (div2 num test-factor) test-factor (cons test-factor accum))
+        (_prime-factors num (inc test-factor) accum))
+      accum)))
+
+(def prime-factors
+  (lambda (num)
+    (if num
+      (if (negative? num)
+        (_factor (neg num) 2 (list (neg 1)))
+        (_factor num 2 nil))
+      (list 0))))
