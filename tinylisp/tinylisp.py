@@ -12,11 +12,13 @@ symbols = "()"
 write = lambda *args: print(*args, end="")
 error = lambda *args: print("Error:", *args, file=sys.stderr)
 
+
 def scan(code):
-    i = 0
-    # Add a space to the end to allow peeking at the next character without
-    # requiring a check for end-of-string
+    """Take a string and yield a series of tokens."""
+    # Add a space to the end to allow peeking at the next character
+    # without requiring a check for end-of-string
     code += " "
+    i = 0
     while i < len(code):
         char = code[i]
         if char in whitespace:
@@ -33,9 +35,13 @@ def scan(code):
             yield code[a:i+1]
         i += 1
 
+
 def parse(code):
-    """Take a series of tokens and turn it into a parse tree.
-The parse tree is in the form of a tinylisp list (i.e. nested tuples)."""
+    """Take code and turn it into a parse tree.
+
+The code can be a string or an iterator that yields tokens.
+The resulting parse tree is a tinylisp list (i.e. nested tuples).
+"""
     if type(code) is str:
         # If we're given a raw codestring, scan it before parsing
         code = scan(code)
@@ -53,11 +59,13 @@ The parse tree is in the form of a tinylisp list (i.e. nested tuples)."""
         element = token
     return (element, parse(code))
 
+
 def consIter(nestedTuple):
-    "Generator function for iterating over a cons chain of nested tuples."
+    """Iterate over a cons chain of nested tuples."""
     while nestedTuple:
         yield nestedTuple[0]
         nestedTuple = nestedTuple[1]
+
 
 # tinylisp built-in functions and macros
 # Key = implementation name; value = tinylisp name
@@ -83,13 +91,13 @@ builtins = {"tl_cons": "c",
             "tl_quit": "quit",
             }
 
-# These are functions and macros that should not output their return values
-# when called at the top level (except in repl mode)
+# These are functions and macros that should not output their return
+# values when called at the top level (except in repl mode)
 
 topLevelQuietFns = ["tl_def", "tl_disp", "tl_load"]
 
-# These are functions and macros that cannot be called from other functions
-# or macros, only from the top level
+# These are functions and macros that cannot be called from other
+# functions or macros, only from the top level
 
 topLevelOnlyFns = ["tl_load", "tl_help", "tl_restart", "tl_quit"]
 
@@ -122,7 +130,24 @@ class Program:
 
     def execute(self, code):
         if type(code) is str:
-            code = parse(code)
+            # First determine whether the code is in single-line or
+            # multiline form:
+            # In single-line form, the code is parsed one line at a time
+            # with closing parentheses inferred at the end of each line
+            # In multiline form, the code is parsed as a whole, with
+            # closing parentheses inferred only at the end
+            # If any line in the code contains more closing parens than
+            # opening parens, the code is assumed to be in multiline
+            # form; otherwise, it's single-line
+            codelines = code.split("\n")
+            multiline = any(line.count(")") > line.count("(")
+                            for line in codelines)
+            if not multiline:
+                for codeline in codelines:
+                    self.execute(parse(codeline))
+                return
+            else:
+                code = parse(code)
         # Evaluate each expression in the code and (possibly) display it
         for expr in consIter(code):
             # Figure out which function the outermost call is
@@ -132,8 +157,9 @@ class Program:
                 if type(outerFunction) is type(self.tl_eval):
                     outerFunction = outerFunction.__name__
             result = self.tl_eval(expr, topLevel=True)
-            # If outer function is in the topLevelQuietFns list, suppress
-            # output--but always show output when running in repl mode
+            # If outer function is in the topLevelQuietFns list,
+            # suppress output--but always show output when running in
+            # repl mode
             if self.repl or outerFunction not in topLevelQuietFns:
                 self.tl_disp(result)
 
@@ -260,8 +286,8 @@ class Program:
                     # head should be a user-defined function/macro
                     # Swap out the args from the original call for the
                     # updated args, the function for the new function
-                    # (which might be the same function), and loop for the
-                    # recursive call
+                    # (which might be the same function), and loop for
+                    # the recursive call
                     args = returnExpr[1]
                     if head[0] == ():
                         macro = True
@@ -453,7 +479,8 @@ class Program:
 
     @macro
     def tl_if(self, cond, trueval, falseval):
-        # Arguments are not pre-evaluated, so cond needs to be evaluated here
+        # Arguments are not pre-evaluated, so cond needs to be evaluated
+        # here
         cond = self.tl_eval(cond)
         if cond == 0 or cond == ():
             return self.tl_eval(falseval)
@@ -481,8 +508,8 @@ class Program:
                 # Add the module to the list of loaded modules
                 self.modules.append(abspath)
                 # Push the module's directory to the stack of module
-                # directories--this allows relative paths in load calls from
-                # within the module
+                # directories--this allows relative paths in load calls
+                # from within the module
                 self.modulePaths.append(moduleDirectory)
                 # Execute the module code
                 self.execute(moduleCode)
@@ -599,6 +626,7 @@ Special commands for the interactive prompt:
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         # User specified one or more files--run them
+        environment = Program()
         for filename in sys.argv[1:]:
             try:
                 with open(filename) as f:
@@ -608,7 +636,6 @@ if __name__ == "__main__":
             except IOError:
                 error("could not read", filename)
             else:
-                environment = Program()
                 try:
                     environment.execute(code)
                 except UserQuit:
