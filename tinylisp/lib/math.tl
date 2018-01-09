@@ -17,9 +17,11 @@
         (neg (head args)))
       0)))
 
-(def + (lambda args (foldl-default add2 args 0)))
+(def +
+  (lambda args (foldl-default add2 args 0)))
 
-(def sum (lambda (ls) (foldl-default add2 ls 0)))
+(def sum
+  (lambda (ls) (foldl-default add2 ls 0)))
 
 (def _mul2
   (lambda (val reps accum)
@@ -35,9 +37,11 @@
         (_mul2 (neg factor1) (neg factor2) 0)
         (_mul2 factor1 factor2 0)))))
 
-(def * (lambda args (foldl-default mul2 args 1)))
+(def *
+  (lambda args (foldl-default mul2 args 1)))
 
-(def product (lambda (ls) (foldl-default mul2 ls 1)))
+(def product
+  (lambda (ls) (foldl-default mul2 ls 1)))
 
 (def _div2-positive
   (lambda (dividend divisor quotient)
@@ -99,11 +103,34 @@
         (divides? divisor (neg multiple))
         (if (less? multiple divisor)
           (zero? multiple)
-          (divides? (sub2 multiple divisor)))))))
+          (divides? divisor (sub2 multiple divisor)))))))
 
-(def even? (lambda (num) (divides? 2 num)))
+(def even?
+  (lambda (num) (divides? 2 num)))
 
-(def odd? (lambda (num) (not (divides? 2 num))))
+(def odd?
+  (lambda (num)
+    (not (divides? 2 num))))
+
+(def pow
+  (lambda (base exponent)
+    (product (repeat-val base exponent))))
+
+(def _gcd-nonnegative
+  (lambda (num1 num2)
+    (if (less? num2 num1)
+      (_gcd-nonnegative num2 num1)
+      (if num1
+        (_gcd-nonnegative (sub2 num2 num1) num1)
+        num2))))
+
+(def gcd
+  (lambda (num1 num2)
+    (if (negative? num1)
+      (gcd (neg num1) num2)
+      (if (negative? num2)
+        (_gcd-nonnegative num1 (neg num2))
+        (_gcd-nonnegative num1 num2)))))
 
 (def max2
   (lambda (value1 value2)
@@ -111,7 +138,8 @@
       value2
       value1)))
 
-(def max (lambda (ls) (foldl max2 ls)))
+(def max
+  (lambda (ls) (foldl max2 ls)))
 
 (def min2
   (lambda (value1 value2)
@@ -119,9 +147,12 @@
       value1
       value2)))
 
-(def min (lambda (ls) (foldl min2 ls)))
+(def min
+  (lambda (ls) (foldl min2 ls)))
 
-(def factorial (lambda (num) (foldl-default mul2 (1to num) 1)))
+(def factorial
+  (lambda (num)
+    (foldl-default mul2 (1to num) 1)))
 
 (def _prime?
   (lambda (num factor)

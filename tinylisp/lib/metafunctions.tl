@@ -15,7 +15,8 @@
         (cons (apply func (list (head ls))) accum))
       (reverse accum))))
 
-(def map (lambda (func ls) (_map func ls nil)))
+(def map
+  (lambda (func ls) (_map func ls nil)))
 
 (def _filter
   (lambda (func ls accum)
@@ -28,7 +29,18 @@
           accum))
       (reverse accum))))
 
-(def filter (lambda (func ls) (_filter func ls nil)))
+(def filter
+  (lambda (func ls) (_filter func ls nil)))
+
+(def _take-while
+  (lambda (func ls accum)
+    (if
+      (if ls (func (head ls)) nil)
+      (_take-while func (tail ls) (cons (head ls) accum))
+      (reverse accum))))
+
+(def take-while
+  (lambda (func ls) (_take-while func ls nil)))
 
 (def _foldl
   (lambda (func accum ls)
@@ -44,7 +56,8 @@
       (_foldl func (head ls) (tail ls))
       default)))
 
-(def foldl (lambda (func ls) (foldl-default func ls nil)))
+(def foldl
+  (lambda (func ls) (foldl-default func ls nil)))
 
 (def _chain-last
   (macro args

@@ -114,23 +114,23 @@
 (def quote-each (lambda (ls) (_quote-each ls nil)))
 
 (def _substitute
-  (lambda (name value ls accum)
+  (lambda (name val ls accum)
     (if ls
       (_substitute
         name
-        value
+        val
         (tail ls)
-        (cons (substitute name value (head ls)) accum))
+        (cons (substitute name val (head ls)) accum))
       (reverse accum))))
 
 (def substitute
-  (lambda (name value original)
+  (lambda (name val original)
      (if (equal? (type original) List)
        (if (equal? (head original) (q q))
          original
-         (_substitute name value original nil))
+         (_substitute name val original nil))
       (if (equal? original name)
-        value
+        val
         original))))
 
 (def _inclusive-range
@@ -139,19 +139,42 @@
        accum
        (_inclusive-range (cons upper accum) lower (sub2 upper 1)))))
 
+(def _reverse-inclusive-range
+  (lambda (accum upper lower)
+    (if (less? upper lower)
+      accum
+      (_reverse-inclusive-range (cons lower accum) upper (add2 lower 1)))))
+
 (def inclusive-range
   (lambda (lower upper)
     (_inclusive-range nil lower upper)))
 
+(def reverse-inclusive-range
+  (lambda (upper lower)
+    (_reverse-inclusive-range nil upper lower)))
+
 (def 1to
   (lambda (num)
     (_inclusive-range nil 1 num)))
+
+(def to1
+  (lambda (num)
+    (_reverse-inclusive-range nil num 1)))
 
 (def range
   (lambda args
     (if (nil? (tail args))
       (_inclusive-range nil 0 (sub2 (head args) 1))
       (_inclusive-range nil (head args) (sub2 (htail args) 1)))))
+
+(def _repeat-val
+  (lambda (val count accum)
+    (if count
+      (_repeat-val val (dec count) (cons val accum))
+      accum)))
+
+(def repeat-val
+  (lambda (val count) (_repeat-val val count nil)))
 
 (def all
   (lambda (ls)
