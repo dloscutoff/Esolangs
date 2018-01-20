@@ -10,12 +10,9 @@
 (def _map
   (lambda (func ls accum)
     (if ls
-      (_map
-        func
+      (_map func
         (tail ls)
-        (cons
-          (apply func (list (head ls)))
-          accum))
+        (cons (func (head ls)) accum))
       (reverse accum))))
 
 (def map
@@ -24,10 +21,9 @@
 (def _filter
   (lambda (func ls accum)
     (if ls
-      (_filter
-        func
+      (_filter func
         (tail ls)
-        (if (apply func (list (head ls)))
+        (if (func (head ls))
           (cons (head ls) accum)
           accum))
       (reverse accum))))
@@ -39,8 +35,7 @@
   (lambda (func ls accum)
     (if
       (if ls (func (head ls)) nil)
-      (_take-while
-        func
+      (_take-while func
         (tail ls)
         (cons (head ls) accum))
       (reverse accum))))
@@ -52,7 +47,7 @@
   (lambda (func accum ls)
     (if ls
       (_foldl func
-        (apply func (list accum (head ls)))
+        (func accum (head ls))
         (tail ls))
       accum)))
 

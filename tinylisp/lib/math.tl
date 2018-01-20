@@ -199,16 +199,17 @@
 
 (def _prime-factors
   (lambda (num test-factor accum)
-    (if (less? test-factor num)
+    (if (greater? test-factor num)
+      accum
       (if (divides? test-factor num)
         (_prime-factors (div2 num test-factor) test-factor (cons test-factor accum))
-        (_prime-factors num (inc test-factor) accum))
-      accum)))
+        (_prime-factors num (inc test-factor) accum)))))
 
+(comment Definition for 0 and negative numbers is chosen such that (product (prime-factors n)) equals n)
 (def prime-factors
   (lambda (num)
     (if num
       (if (negative? num)
-        (_factor (neg num) 2 (list (neg 1)))
-        (_factor num 2 nil))
+        (_prime-factors (neg num) 2 (list (neg 1)))
+        (_prime-factors num 2 nil))
       (list 0))))
