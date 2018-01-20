@@ -37,12 +37,12 @@ class Playfield:
                     char = codeLines[y][x]
                     if char.upper() in collectorNames:
                         # A letter, not v, is a collector
-                        coll = Collector(char)
-                        if coll.letter in self.collectors:
-                            self.collectors[coll.letter].append(coll)
+                        collector = Collector(char.upper())
+                        if collector.letter in self.collectors:
+                            self.collectors[collector.letter].append(collector)
                         else:
-                            self.collectors[coll.letter] = [coll]
-                        row.append(coll)
+                            self.collectors[collector.letter] = [collector]
+                        row.append(collector)
                     elif char == "?":
                         # A question mark is a source
                         if inputs:
@@ -64,6 +64,10 @@ class Playfield:
                         bit = Bit(x, y, int(char))
                         self.activeBits.append(bit)
                         row.append(" ")
+                    elif char == "V":
+                        # V cannot be a collector, so treat it in either
+                        # case as a downward arrow
+                        row.append("v")
                     else:
                         row.append(char)
                 else:
@@ -144,11 +148,11 @@ class Playfield:
                         elif bit.value == 0:
                             bit.dx, bit.dy = bit.dy, -bit.dx
                     elif device == "\\":
-                        # Reflect bit and change to inactive state
+                        # Reflect bit and change mirror to inactive state
                         bit.dx, bit.dy = bit.dy, bit.dx
                         self.grid[bit.y][bit.x] = "-"
                     elif device == "/":
-                        # Reflect bit and change to inactive state
+                        # Reflect bit and change mirror to inactive state
                         bit.dx, bit.dy = -bit.dy, -bit.dx
                         self.grid[bit.y][bit.x] = "|"
                     elif device == "~":
@@ -181,12 +185,13 @@ class Playfield:
                 if letter not in self.collectors:
                     # No collectors in this program use that letter
                     continue
-                if any(coll.queue for coll in self.collectors[letter]):
+                if any(collector.queue
+                       for collector in self.collectors[letter]):
                     # Some collectors with this letter have bits in them:
                     # open these
                     self.openCollectors = self.collectors[letter].copy()
-                    for coll in self.openCollectors:
-                        coll.open = True
+                    for collector in self.openCollectors:
+                        collector.open = True
                     self.reset()
                     break
             else:
