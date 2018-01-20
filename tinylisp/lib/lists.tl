@@ -7,7 +7,8 @@
       (_length (tail ls) (add2 1 accum))
       accum)))
 
-(def length (lambda (ls) (_length ls 0)))
+(def length
+  (lambda (ls) (_length ls 0)))
 
 (def nth
   (lambda (ls index)
@@ -19,13 +20,22 @@
           (head ls)))
       nil)))
 
+(def last
+  (lambda (ls)
+    (if ls
+      (if (tail ls)
+        (last (tail ls))
+        (head ls))
+      nil)))
+
 (def _reverse
   (lambda (ls accum)
     (if ls
       (_reverse (tail ls) (cons (head ls) accum))
       accum)))
 
-(def reverse (lambda (ls) (_reverse ls nil)))
+(def reverse
+  (lambda (ls) (_reverse ls nil)))
 
 (def concat
   (lambda (ls-front ls-back)
@@ -71,7 +81,8 @@
         (_count-occurrences (tail ls) item count))
       count)))
 
-(def count-occurrences (lambda (ls item) (_count-occurrences ls item 0)))
+(def count-occurrences
+  (lambda (ls item) (_count-occurrences ls item 0)))
 
 (def _first-index
   (lambda (ls item index)
@@ -81,7 +92,8 @@
         (_first-index (tail ls) item (inc index)))
       nil)))
 
-(def first-index (lambda (ls item) (_first-index ls item 0)))
+(def first-index
+  (lambda (ls item) (_first-index ls item 0)))
 
 (def _last-index
   (lambda (ls item index result-index)
@@ -91,7 +103,8 @@
         (_last-index (tail ls) item (inc index) result-index))
       result-index)))
 
-(def last-index (lambda (ls item) (_last-index ls item 0 nil)))
+(def last-index
+  (lambda (ls item) (_last-index ls item 0 nil)))
 
 (def _all-indices
   (lambda (ls item index accum)
@@ -101,7 +114,8 @@
         (_all-indices (tail ls) item (inc index) accum))
       (reverse accum))))
 
-(def all-indices (lambda (ls item) (_all-indices ls item 0 nil)))
+(def all-indices
+  (lambda (ls item) (_all-indices ls item 0 nil)))
 
 (def _quote-each
   (lambda (ls accum)
@@ -111,7 +125,8 @@
         (cons (list (q q) (head ls)) accum))
       (reverse accum))))
 
-(def quote-each (lambda (ls) (_quote-each ls nil)))
+(def quote-each
+  (lambda (ls) (_quote-each ls nil)))
 
 (def _substitute
   (lambda (name val ls accum)
@@ -125,13 +140,55 @@
 
 (def substitute
   (lambda (name val original)
-     (if (equal? (type original) List)
-       (if (equal? (head original) (q q))
-         original
-         (_substitute name val original nil))
+    (if (equal? (type original) List)
+      (if (equal? (head original) (q q))
+        original
+        (_substitute name val original nil))
       (if (equal? original name)
         val
         original))))
+
+(def _transpose
+  (lambda (matrix accum)
+    (if (all matrix)
+      (_transpose
+        (map tail matrix)
+        (cons (map head matrix) accum))
+      (reverse accum))))
+
+(def transpose
+  (lambda (matrix)
+    (if matrix (_transpose matrix nil) nil)))
+
+(def zip
+  (lambda args (transpose args)))
+
+(def _each-head-or-default
+  (lambda (matrix default accum)
+    (if matrix
+      (if (head matrix)
+        (_each-head-or-default
+          (tail matrix)
+          default
+          (cons (head (head matrix)) accum))
+        (_each-head-or-default
+          (tail matrix)
+          default
+          (cons default accum)))
+      (reverse accum))))
+
+(def _transpose-default
+  (lambda (matrix default accum)
+    (if (any matrix)
+      (_transpose-default
+        (map tail matrix)
+        default
+        (cons (_each-head-or-default matrix default nil) accum))
+      (reverse accum))))
+
+(def transpose-default
+  (lambda (matrix default)
+    (if matrix (_transpose-default matrix default nil) nil)))
 
 (def _inclusive-range
   (lambda (accum lower upper)
@@ -153,13 +210,17 @@
   (lambda (upper lower)
     (_reverse-inclusive-range nil upper lower)))
 
+(def 0to
+  (lambda (num) (_inclusive-range nil 0 num)))
+
 (def 1to
-  (lambda (num)
-    (_inclusive-range nil 1 num)))
+  (lambda (num) (_inclusive-range nil 1 num)))
+
+(def to0
+  (lambda (num) (_reverse-inclusive-range nil num 0)))
 
 (def to1
-  (lambda (num)
-    (_reverse-inclusive-range nil num 1)))
+  (lambda (num) (_reverse-inclusive-range nil num 1)))
 
 (def range
   (lambda args

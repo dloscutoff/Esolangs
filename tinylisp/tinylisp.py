@@ -11,6 +11,7 @@ symbols = "()"
 # Shortcut function for print without newline and print to stderr
 write = lambda *args: print(*args, end="")
 error = lambda *args: print("Error:", *args, file=sys.stderr)
+warn = lambda *args: print("Warning:", *args, file=sys.stderr)
 
 
 def scan(code):
@@ -195,7 +196,6 @@ class Program:
             # Loop while recursive calls are optimizable tail-calls
             while True:
                 if type(argnames) is tuple:
-                    #i = 0
                     if macro:
                         # Macro args are still in their nested tuple
                         nameIter = consIter(argnames)
@@ -210,6 +210,9 @@ class Program:
                                 # Ran out of argument values
                                 nameCount += 1
                             elif type(name) is str:
+                                if name in self.names[0]:
+                                    warn("macro parameter name shadows",
+                                         "global name", name)
                                 self.names[self.depth][name] = val
                                 nameCount += 1
                                 valCount += 1
@@ -235,6 +238,9 @@ class Program:
                                 # Ran out of argument values
                                 nameCount += 1
                             elif type(name) is str:
+                                if name in self.names[0]:
+                                    warn("function parameter name shadows",
+                                         "global name", name)
                                 self.names[self.depth][name] = val
                                 nameCount += 1
                             else:
@@ -249,9 +255,15 @@ class Program:
                 elif type(argnames) is str:
                     # Single name, bind entire arglist to it
                     if macro:
+                        if argnames in self.names[0]:
+                            warn("macro parameter name shadows global name",
+                                 argnames)
                         # Macro args are still in their nested tuple
                         self.names[self.depth][argnames] = args
                     else:
+                        if argnames in self.names[0]:
+                            warn("function parameter name shadows global name",
+                                 argnames)
                         # Function args are in the list evaledArgs
                         args = ()
                         while evaledArgs:
@@ -265,7 +277,7 @@ class Program:
                 # Tail-call elimination
                 returnExpr = code
                 head = None
-                # Eliminate any ifs
+                # Eliminate any ifs and evals
                 while type(returnExpr) is tuple and returnExpr != ():
                     head = self.tl_eval(returnExpr[0])
                     if head == self.tl_if:
@@ -279,6 +291,14 @@ class Program:
                                 returnExpr = tail[1][0]
                         else:
                             error("wrong number of arguments for tl_if")
+                            return ()
+                    elif head == self.tl_eval:
+                        # The head is (some name for) tl_eval
+                        tail = returnExpr[1]
+                        if tail:
+                            returnExpr = self.tl_eval(tail[0])
+                        else:
+                            error("wrong number of arguments for tl_eval")
                             return ()
                     else:
                         break

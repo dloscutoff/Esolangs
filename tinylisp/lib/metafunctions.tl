@@ -4,7 +4,8 @@
 
 (def apply
   (lambda (func arglist)
-    (eval (cons (q func) (quote-each arglist)))))
+    (eval
+      (cons (q func) (quote-each arglist)))))
 
 (def _map
   (lambda (func ls accum)
@@ -12,7 +13,9 @@
       (_map
         func
         (tail ls)
-        (cons (apply func (list (head ls))) accum))
+        (cons
+          (apply func (list (head ls)))
+          accum))
       (reverse accum))))
 
 (def map
@@ -36,7 +39,10 @@
   (lambda (func ls accum)
     (if
       (if ls (func (head ls)) nil)
-      (_take-while func (tail ls) (cons (head ls) accum))
+      (_take-while
+        func
+        (tail ls)
+        (cons (head ls) accum))
       (reverse accum))))
 
 (def take-while
@@ -61,7 +67,7 @@
 
 (def _chain-last
   (macro args
-    (if (nil? (tail args))
+    (if (tail args)
       (list (q (arg)) (head args))
       (eval
         (cons

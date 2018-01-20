@@ -132,6 +132,33 @@
         (_gcd-nonnegative num1 (neg num2))
         (_gcd-nonnegative num1 num2)))))
 
+(def _to-base
+  (lambda (base num accum)
+    (if (positive? num)
+      (_to-base base
+        (div2 num base)
+        (cons (mod num base) accum))
+      accum)))
+
+(def to-base
+  (lambda (base num)
+    (if (positive? base)
+      (if (equal? base 1)
+        (repeat-val 1 num)
+        (_to-base base num nil))
+      nil)))
+
+(def _from-base
+  (lambda (base digits accum)
+    (if digits
+      (_from-base base
+        (tail digits)
+        (add2 (head digits) (mul2 accum base)))
+      accum)))
+
+(def from-base
+  (lambda (base digits) (_from-base base digits 0)))
+
 (def max2
   (lambda (value1 value2)
     (if (less? value1 value2)
