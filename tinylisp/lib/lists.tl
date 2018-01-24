@@ -148,48 +148,6 @@
         val
         original))))
 
-(def _transpose
-  (lambda (matrix accum)
-    (if (all matrix)
-      (_transpose
-        (map tail matrix)
-        (cons (map head matrix) accum))
-      (reverse accum))))
-
-(def transpose
-  (lambda (matrix)
-    (if matrix (_transpose matrix nil) nil)))
-
-(def zip
-  (lambda args (transpose args)))
-
-(def _each-head-or-default
-  (lambda (matrix default accum)
-    (if matrix
-      (if (head matrix)
-        (_each-head-or-default
-          (tail matrix)
-          default
-          (cons (head (head matrix)) accum))
-        (_each-head-or-default
-          (tail matrix)
-          default
-          (cons default accum)))
-      (reverse accum))))
-
-(def _transpose-default
-  (lambda (matrix default accum)
-    (if (any matrix)
-      (_transpose-default
-        (map tail matrix)
-        default
-        (cons (_each-head-or-default matrix default nil) accum))
-      (reverse accum))))
-
-(def transpose-default
-  (lambda (matrix default)
-    (if matrix (_transpose-default matrix default nil) nil)))
-
 (def _inclusive-range
   (lambda (accum lower upper)
     (if (less? upper lower)

@@ -9,9 +9,8 @@
 (def list (q (args args)))
 
 (def macro
-  (q (()
-    (params expr)
-    (cons nil (list params expr)))))
+  (q
+   (() (params expr) (list nil params expr))))
 
 (def lambda (macro (params expr) (list params expr)))
 
@@ -33,3 +32,21 @@
 (def htail (lambda (ls) (head (tail ls))))
 
 (def not (lambda (val) (if val 0 1)))
+
+(def both
+  (lambda (cond1 cond2)
+    (if cond1
+      (if cond2 1 0)
+      0)))
+
+(def either
+  (lambda (cond1 cond2)
+    (if cond1
+      1
+      (if cond2 1 0))))
+
+(def neither
+  (lambda (cond1 cond2)
+    (if cond1
+      0
+      (if cond2 0 1))))
