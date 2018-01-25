@@ -129,24 +129,24 @@
   (lambda (ls) (_quote-each ls nil)))
 
 (def _substitute
-  (lambda (name val ls accum)
+  (lambda (old-val new-val ls accum)
     (if ls
       (_substitute
-        name
-        val
+        old-val
+        new-val
         (tail ls)
-        (cons (substitute name val (head ls)) accum))
+        (cons (substitute old-val new-val (head ls)) accum))
       (reverse accum))))
 
 (def substitute
-  (lambda (name val original)
-    (if (equal? (type original) List)
-      (if (equal? (head original) (q q))
-        original
-        (_substitute name val original nil))
-      (if (equal? original name)
-        val
-        original))))
+  (lambda (old-val new-val expr)
+    (if (equal? (type expr) List)
+      (if (equal? (head expr) (q q))
+        expr
+        (_substitute old-val new-val expr nil))
+      (if (equal? expr old-val)
+        new-val
+        expr))))
 
 (def _inclusive-range
   (lambda (accum lower upper)

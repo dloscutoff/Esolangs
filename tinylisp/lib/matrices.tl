@@ -4,6 +4,22 @@
 (load metafunctions)
 (load math)
 
+(def _main-diagonal
+  (lambda (matrix accum)
+    (if
+      (both matrix (head matrix))
+      (_main-diagonal
+        (map tail (tail matrix))
+        (cons (head (head matrix)) accum))
+      (reverse accum))))
+
+(def main-diagonal
+  (lambda (matrix) (_main-diagonal matrix nil)))
+
+(def trace
+  (lambda (matrix)
+    (sum (main-diagonal matrix))))
+
 (def _transpose
   (lambda (matrix accum)
     (if (all matrix)
