@@ -150,15 +150,21 @@
 
 (def _inclusive-range
   (lambda (accum lower upper)
-    (if (less? upper lower)
-       accum
-       (_inclusive-range (cons upper accum) lower (sub2 upper 1)))))
+    (if
+      (both (type? lower Int) (type? upper Int))
+      (if (less? upper lower)
+        accum
+        (_inclusive-range (cons upper accum) lower (sub2 upper 1)))
+      (less? upper lower))))
 
 (def _reverse-inclusive-range
   (lambda (accum upper lower)
-    (if (less? upper lower)
-      accum
-      (_reverse-inclusive-range (cons lower accum) upper (add2 lower 1)))))
+    (if
+      (both (type? lower Int) (type? upper Int))
+      (if (less? upper lower)
+        accum
+        (_reverse-inclusive-range (cons lower accum) upper (add2 lower 1)))
+      (less? upper lower))))
 
 (def inclusive-range
   (lambda (lower upper)
@@ -188,7 +194,7 @@
 
 (def _repeat-val
   (lambda (val count accum)
-    (if count
+    (if (positive? count)
       (_repeat-val val (dec count) (cons val accum))
       accum)))
 

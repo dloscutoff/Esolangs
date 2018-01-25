@@ -30,6 +30,9 @@
 (def positive? (lambda (num) (less? 0 num)))
 (def negative? (lambda (num) (less? num 0)))
 
+(def type?
+  (lambda (val some-type) (equal? (type val) some-type)))
+
 (def cadr (lambda (ls) (car (cdr ls))))
 (def cddr (lambda (ls) (cdr (cdr ls))))
 (def htail (lambda (ls) (head (tail ls))))

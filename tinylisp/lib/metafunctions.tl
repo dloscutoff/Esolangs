@@ -84,6 +84,6 @@
 (def add-n
   (lambda (num)
     (substitute
-      (q num)
-      num
-      (lambda (x) (add2 num x)))))
+      (q _num)
+      (quote num)
+      (lambda (x) (add2 _num x)))))
