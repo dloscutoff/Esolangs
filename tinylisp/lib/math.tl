@@ -23,10 +23,25 @@
 (def sum
   (lambda (ls) (foldl-default add2 ls 0)))
 
-(def _mul2
-  (lambda (val reps accum)
-    (if reps
-      (_mul2 val (dec reps) (add2 accum val))
+(def _powers-of-2
+  (lambda (num 2^i accum)
+    (if (less? num 2^i)
+      accum
+      (_powers-of-2 num (add2 2^i 2^i) (cons 2^i accum)))))
+
+(comment Helper function for binary multiplication: returns a list of powers of 2 that are <= given number)
+(def powers-of-2
+  (lambda (num) (_powers-of-2 num 1 nil)))
+
+(def _mul2-binary
+  (lambda (num reps binary-places accum)
+    (if binary-places
+      (if (less? reps (head binary-places))
+        (_mul2-binary num reps (tail binary-places) (add2 accum accum))
+        (_mul2-binary num
+          (sub2 reps (head binary-places))
+          (tail binary-places)
+          (add2 (add2 accum accum) num)))
       accum)))
 
 (def mul2
@@ -34,8 +49,8 @@
     (if (less? (abs factor1) (abs factor2))
       (mul2 factor2 factor1)
       (if (negative? factor2)
-        (_mul2 (neg factor1) (neg factor2) 0)
-        (_mul2 factor1 factor2 0)))))
+        (_mul2-binary (neg factor1) (neg factor2) (powers-of-2 (neg factor2)) 0)
+        (_mul2-binary factor1 factor2 (powers-of-2 factor2) 0)))))
 
 (def *
   (lambda args (foldl-default mul2 args 1)))
@@ -95,26 +110,40 @@
         (neg (mod (neg num) (neg modulus))))
       nil)))
 
+(def _divides?
+  (lambda (divisor multiple)
+    (if (less? multiple divisor)
+      (equal? multiple 0)
+      (_divides? divisor (sub2 multiple divisor)))))
+
 (def divides?
   (lambda (divisor multiple)
-    (if (negative? divisor)
-      (divides? (neg divisor) multiple)
-      (if (negative? multiple)
-        (divides? divisor (neg multiple))
-        (if (less? multiple divisor)
-          (zero? multiple)
-          (divides? divisor (sub2 multiple divisor)))))))
+    (if divisor
+      (if (negative? divisor)
+        (divides? (neg divisor) multiple)
+        (if (negative? multiple)
+          (_divides? divisor (neg multiple))
+          (_divides? divisor multiple)))
+      0)))
 
 (def even?
-  (lambda (num) (divides? 2 num)))
+  (lambda (num) (_divides? 2 num)))
 
 (def odd?
   (lambda (num)
-    (not (divides? 2 num))))
+    (not (_divides? 2 num))))
 
+(comment When given a negative exponent, pow returns 0, except with special cases for bases 1, -1, or 0)
+(comment When the exponent is 0, pow returns 1, even when the base is 0)
 (def pow
   (lambda (base exponent)
-    (product (repeat-val base exponent))))
+    (if (negative? exponent)
+      (if base
+        (if (equal? (abs base) 1)
+          (pow base (neg exponent))
+          0)
+        nil)
+      (product (repeat-val base exponent)))))
 
 (def _gcd-nonnegative
   (lambda (num1 num2)
