@@ -5,16 +5,25 @@ import os
 from contextlib import contextmanager
 from itertools import zip_longest
 
+
 whitespace = " \t\n\r"
 symbols = "()"
 
 # The empty tuple represents the empty list, nil
 nil = ()
 
+
 # Shortcut functions for print without newline and print to stderr
-write = lambda *args: print(*args, end="")
-error = lambda *args: print("Error:", *args, file=sys.stderr)
-warn = lambda *args: print("Warning:", *args, file=sys.stderr)
+def write(*args):
+    print(*args, end="")
+
+
+def error(*args):
+    print("Error:", *args, file=sys.stderr)
+
+
+def warn(*args):
+    print("Warning:", *args, file=sys.stderr)
 
 
 def scan(code):
@@ -46,7 +55,7 @@ def parse(code):
 The code can be a string or an iterator that yields tokens.
 The resulting parse tree is a tinylisp list (i.e. nested tuples).
 """
-    if type(code) is str:
+    if isinstance(code, str):
         # If we're given a raw codestring, scan it before parsing
         code = scan(code)
     try:
@@ -64,11 +73,11 @@ The resulting parse tree is a tinylisp list (i.e. nested tuples).
     return (element, parse(code))
 
 
-def consIter(nestedTuple):
+def cons_iter(nested_tuple):
     """Iterate over a cons chain of nested tuples."""
-    while nestedTuple:
-        yield nestedTuple[0]
-        nestedTuple = nestedTuple[1]
+    while nested_tuple:
+        yield nested_tuple[0]
+        nested_tuple = nested_tuple[1]
 
 
 # tinylisp built-in functions and macros
@@ -100,44 +109,51 @@ builtins = {"tl_cons": "c",
 # These are functions and macros that should not output their return
 # values when called at the top level (except in repl mode)
 
-topLevelQuietFns = ["tl_def", "tl_disp", "tl_load"]
+top_level_quiet_fns = ["tl_def", "tl_disp", "tl_load"]
 
 # These are functions and macros that cannot be called from other
 # functions or macros, only from the top level
 
-topLevelOnlyFns = ["tl_load", "tl_help", "tl_restart", "tl_quit"]
+top_level_only_fns = ["tl_load", "tl_help", "tl_restart", "tl_quit"]
+
 
 # Decorators for member functions that implement builtins
 
-def macro(pyFn):
-    pyFn.isMacro = True
-    return pyFn
+def macro(pyfunc):
+    pyfunc.is_macro = True
+    return pyfunc
 
-def function(pyFn):
-    pyFn.isMacro = False
-    return pyFn
+
+def function(pyfunc):
+    pyfunc.is_macro = False
+    return pyfunc
+
 
 # Exception that is raised by the (quit) macro
 
-class UserQuit(BaseException): pass
+class UserQuit(BaseException):
+    pass
 
 
 class Program:
     def __init__(self, repl=False):
         self.repl = repl
         self.modules = []
-        self.modulePaths = [os.path.abspath(os.path.dirname(__file__))]
+        self.module_paths = [os.path.abspath(os.path.dirname(__file__))]
         self.names = [{}]
         self.depth = 0
-        self.globalNames = self.names[0]
-        self.localNames = self.globalNames
+        self.builtins = []
+        self.global_names = self.names[0]
+        self.local_names = self.global_names
         # Go through the tinylisp builtins and put the corresponding
         # member functions into the top-level symbol table
-        for fnName, tlName in builtins.items():
-            self.globalNames[tlName] = getattr(self, fnName)
+        for func_name, tl_func_name in builtins.items():
+            builtin = getattr(self, func_name)
+            self.builtins.append(builtin)
+            self.global_names[tl_func_name] = builtin
 
     def execute(self, code):
-        if type(code) is str:
+        if isinstance(code, str):
             # First determine whether the code is in single-line or
             # multiline form:
             # In single-line form, the code is parsed one line at a time
@@ -157,113 +173,112 @@ class Program:
             else:
                 code = parse(code)
         # Evaluate each expression in the code and (possibly) display it
-        for expr in consIter(code):
+        for expr in cons_iter(code):
             # Figure out which function the outermost call is
-            outerFunction = None
-            if type(expr) is tuple and expr != nil and type(expr[0]) is str:
-                outerFunction = self.tl_eval(expr[0])
-                if type(outerFunction) is type(self.tl_eval):
-                    outerFunction = outerFunction.__name__
-            result = self.tl_eval(expr, topLevel=True)
-            # If outer function is in the topLevelQuietFns list,
+            outer_function = None
+            if expr and isinstance(expr, tuple) and isinstance(expr[0], str):
+                outer_function = self.tl_eval(expr[0])
+                if outer_function in self.builtins:
+                    outer_function = outer_function.__name__
+            result = self.tl_eval(expr, top_level=True)
+            # If outer function is in the top_level_quiet_fns list,
             # suppress output--but always show output when running in
             # repl mode
-            if self.repl or outerFunction not in topLevelQuietFns:
+            if self.repl or outer_function not in top_level_quiet_fns:
                 self.tl_disp(result)
 
-    def callData(self, function, rawArgs):
+    def call_data(self, function, raw_args):
         """Returns function/macro flag, param names, body, & arglist."""
         if function[0] == nil:
             # Potential macro
-            macro = True
+            is_macro = True
             # function should be a nested-tuple structure containing
             # nil, parameter names, and macro body
             if function[1] and function[1][1]:
-                paramNames = function[1][0]
+                param_names = function[1][0]
                 body = function[1][1][0]
                 # Macro arguments stay unevaluated
-                arglist = [arg for arg in consIter(rawArgs)]
+                arglist = [arg for arg in cons_iter(raw_args)]
             else:
                 error("list too short to be interpreted as macro")
                 raise TypeError
         else:
             # Potential function
-            macro = False
+            is_macro = False
             # function should be a nested-tuple structure containing
             # parameter names and function body
             if function[1]:
-                paramNames = function[0]
+                param_names = function[0]
                 body = function[1][0]
                 # Function arguments are evaluated
-                arglist = [self.tl_eval(arg) for arg in consIter(rawArgs)]
+                arglist = [self.tl_eval(arg) for arg in cons_iter(raw_args)]
             else:
                 error("list too short to be interpreted as function")
                 raise TypeError
-        return macro, paramNames, body, arglist
+        return is_macro, param_names, body, arglist
 
-    def call(self, function, rawArgs):
+    def call(self, function, raw_args):
         """Perform a function call with a user-defined function or macro."""
         try:
-            macro, paramNames, body, arglist \
-                   = self.callData(function, rawArgs)
+            is_macro, param_names, body, arglist \
+                   = self.call_data(function, raw_args)
         except TypeError:
             # There was a problem with the structure of the supposed
-            # function/macro (callData already gave the error message)
+            # function/macro (call_data already gave the error message)
             return nil
-        with self.newScope():
+        with self.new_scope():
             # Loop while recursive calls are optimizable tail-calls
             while function is not None:
                 # Assign arg values to param names in local scope
-                if type(paramNames) is tuple:
-                    nameIter = consIter(paramNames)
-                    valIter = arglist
-                    nameCount = 0
-                    valCount = 0
-                    for name, val in zip_longest(nameIter, valIter):
+                if isinstance(param_names, tuple):
+                    name_iter = cons_iter(param_names)
+                    name_count = 0
+                    val_count = 0
+                    for name, val in zip_longest(name_iter, arglist):
                         if name is None:
                             # Ran out of argument names
-                            valCount += 1
+                            val_count += 1
                         elif val is None:
                             # Ran out of argument values
-                            nameCount += 1
-                        elif type(name) is str:
-                            if name in self.globalNames:
-                                warn("macro" if macro else "function",
+                            name_count += 1
+                        elif isinstance(name, str):
+                            if name in self.global_names:
+                                warn("macro" if is_macro else "function",
                                      "parameter name shadows global name",
                                      name)
-                            self.localNames[name] = val
-                            nameCount += 1
-                            valCount += 1
+                            self.local_names[name] = val
+                            name_count += 1
+                            val_count += 1
                         else:
                             error("parameter list must contain names, not",
                                   self.tl_type(name))
                             return nil
-                    if nameCount != valCount:
+                    if name_count != val_count:
                         # Wrong number of arguments
-                        error("macro" if macro else "function",
-                              "expected", nameCount, "arguments, got",
-                              valCount)
+                        error("macro" if is_macro else "function",
+                              "expected", name_count, "arguments, got",
+                              val_count)
                         return nil
-                elif type(paramNames) is str:
+                elif isinstance(param_names, str):
                     # Single name, bind entire arglist to it
-                    arglistName = paramNames
-                    if arglistName in self.globalNames:
-                        warn("macro" if macro else "function",
+                    arglist_name = param_names
+                    if arglist_name in self.global_names:
+                        warn("macro" if is_macro else "function",
                              "parameter name shadows global name",
-                             arglistName)
+                             arglist_name)
                     args = nil
                     while arglist:
                         args = (arglist.pop(), args)
-                    self.localNames[arglistName] = args
+                    self.local_names[arglist_name] = args
                 else:
                     error("parameters must either be name or list of names,",
-                          "not", self.tl_type(paramNames))
+                          "not", self.tl_type(param_names))
                     return nil
-                
+
                 # Tail-call elimination
                 head = None
                 # Eliminate any ifs and evals
-                while body and type(body) is tuple:
+                while body and isinstance(body, tuple):
                     head = self.tl_eval(body[0])
                     if head == self.tl_if:
                         # The head is (some name for) tl_if
@@ -291,121 +306,125 @@ class Program:
                 # Are we left with a tail call to a user-defined
                 # function/macro (either the same one or a different
                 # one)?
-                if head and type(head) is tuple:
+                if head and isinstance(head, tuple):
                     # If so, swap out the args from the original call
                     # for the updated args, the function for the new
                     # function (which might be the same function), and
                     # loop for the recursive call
-                    rawArgs = body[1]
+                    raw_args = body[1]
                     function = head
                     try:
-                        macro, paramNames, body, arglist \
-                               = self.callData(function, rawArgs)
+                        is_macro, param_names, body, arglist \
+                               = self.call_data(function, raw_args)
                     except TypeError:
                         # There was a problem with the structure of the
-                        # supposed function/macro (callData already gave
+                        # supposed function/macro (call_data already gave
                         # the error message)
                         return nil
                     # Clear the local scope to prepare for the next
                     # iteration
-                    self.localNames.clear()
+                    self.local_names.clear()
                 else:
                     # Otherwise, eval the final expression, break out
                     # of the loop, and return it
-                    returnVal = self.tl_eval(body)
+                    return_val = self.tl_eval(body)
                     function = None
-        return returnVal
+        return return_val
 
     @contextmanager
-    def newScope(self):
+    def new_scope(self):
         self.depth += 1
         self.names.append({})
-        self.localNames = self.names[self.depth]
+        self.local_names = self.names[self.depth]
         try:
-            yield self.localNames
+            yield self.local_names
         finally:
             self.names.pop()
             self.depth -= 1
-            self.localNames = self.names[self.depth]
+            self.local_names = self.names[self.depth]
 
     @function
     def tl_cons(self, head, tail):
-        if type(tail) is not tuple:
-            error("cannot cons to non-list in tinylisp")
-            return nil
-        else:
+        if isinstance(tail, tuple):
             return (head, tail)
+        else:
+            error("cannot cons to", self.tl_type(tail), "in tinylisp")
+            return nil
 
     @function
     def tl_head(self, lyst):
-        if type(lyst) is not tuple:
-            error("cannot get head of non-list")
-            return nil
-        elif lyst == nil:
-            return nil
+        if isinstance(lyst, tuple):
+            if lyst == nil:
+                return nil
+            else:
+                return lyst[0]
         else:
-            return lyst[0]
+            error("cannot get head of", self.tl_type(lyst))
+            return nil
 
     @function
     def tl_tail(self, lyst):
-        if type(lyst) is not tuple:
-            error("cannot get tail of non-list")
-            return nil
-        elif lyst == nil:
-            return nil
+        if isinstance(lyst, tuple):
+            if lyst == nil:
+                return nil
+            else:
+                return lyst[1]
         else:
-            return lyst[1]
+            error("cannot get tail of", self.tl_type(lyst))
+            return nil
 
     @function
     def tl_add2(self, arg1, arg2):
-        if type(arg1) is not int or type(arg2) is not int:
-            error("cannot add non-integers")
-            return nil
-        else:
+        if isinstance(arg1, int) and isinstance(arg2, int):
             return arg1 + arg2
+        else:
+            error("cannot add", self.tl_type(arg1), "and", self.tl_type(arg2))
+            return nil
 
     @function
     def tl_sub2(self, arg1, arg2):
-        if type(arg1) is not int or type(arg2) is not int:
-            error("cannot subtract non-integers")
-            return nil
-        else:
+        if isinstance(arg1, int) and isinstance(arg2, int):
             return arg1 - arg2
+        else:
+            error("cannot subtract", self.tl_type(arg1), "and",
+                  self.tl_type(arg2))
+            return nil
 
     @function
     def tl_less2(self, arg1, arg2):
         try:
             return int(arg1 < arg2)
         except TypeError:
-            error("unorderable types:", self.tl_type(arg1), "and",
-                  self.tl_type(arg2))
+            error("cannot use less-than to compare", self.tl_type(arg1),
+                  "and", self.tl_type(arg2))
+            return nil
 
     @function
     def tl_eq2(self, arg1, arg2):
         return int(arg1 == arg2)
 
     @function
-    def tl_eval(self, code, topLevel=False):
-        if type(code) is tuple:
+    def tl_eval(self, code, top_level=False):
+        if isinstance(code, tuple):
             if code == nil:
                 # Nil evaluates to itself
                 return nil
             # Otherwise, it's a function/macro call
             function = self.tl_eval(code[0])
-            if function and type(function) is tuple:
+            if function and isinstance(function, tuple):
                 # User-defined function or macro
                 return self.call(function, code[1])
-            elif type(function) is type(self.tl_eval):
+            elif function in self.builtins:
                 # Builtin function or macro
-                if function.__name__ in topLevelOnlyFns and not topLevel:
+                if function.__name__ in top_level_only_fns and not top_level:
                     error("call to", function.__name__, "cannot be nested")
                     return nil
-                if function.isMacro:
+                if function.is_macro:
                     # Macros receive their args unevaluated
-                    args = consIter(code[1])
+                    args = cons_iter(code[1])
                 else:
                     # Functions receive their args evaluated
-                    args = (self.tl_eval(arg) for arg in consIter(code[1]))
+                    args = (self.tl_eval(arg) for arg in cons_iter(code[1]))
                 try:
                     return function(*args)
                 except TypeError as err:
@@ -416,15 +435,15 @@ class Program:
                 # Trying to call an int or unevaluated name
                 error(function, "is not a function or macro")
                 return nil
-        elif type(code) is int:
+        elif isinstance(code, int):
             # Integer literal
             return code
-        elif type(code) is str:
+        elif isinstance(code, str):
             # Name; look up its value
-            if code in self.localNames:
-                return self.localNames[code]
-            elif code in self.globalNames:
-                return self.globalNames[code]
+            if code in self.local_names:
+                return self.local_names[code]
+            elif code in self.global_names:
+                return self.global_names[code]
             else:
                 error("referencing undefined name", code)
                 return nil
@@ -434,11 +453,11 @@ class Program:
 
     @function
     def tl_type(self, value):
-        if type(value) is int:
+        if isinstance(value, int):
             return "Int"
-        elif type(value) is str:
+        elif isinstance(value, str):
             return "Name"
-        elif type(value) is tuple:
+        elif isinstance(value, tuple):
             return "List"
         else:
             return "Builtin"
@@ -448,21 +467,21 @@ class Program:
         if value is not None and not self.quiet:
             if value == nil:
                 write("()")
-            elif type(value) is tuple:
+            elif isinstance(value, tuple):
                 # List (as nested tuple)
-                atBeginning = True
-                for item in consIter(value):
-                    if atBeginning:
+                beginning = True
+                for item in cons_iter(value):
+                    if beginning:
                         write("(")
-                        atBeginning = False
+                        beginning = False
                     else:
                         write(" ")
                     self.tl_disp(item, end="")
                 write(")")
-            elif type(value) is type(self.tl_disp):
+            elif value in self.builtins:
                 # One of the builtin functions or macros
                 write("<builtin %s %s>"
-                      % ("macro" if value.isMacro else "function",
+                      % ("macro" if value.is_macro else "function",
                          value.__name__))
             else:
                 # Integer or name
@@ -472,24 +491,24 @@ class Program:
 
     @function
     def tl_string(self, value):
-        if type(value) is str:
+        if isinstance(value, str):
             return value
-        elif type(value) is int:
+        elif isinstance(value, int):
             # TBD: chr(value) instead?
             return str(value)
-        elif type(value) is tuple:
+        elif isinstance(value, tuple):
             result = ""
-            for charCode in consIter(value):
-                if type(charCode) is int:
+            for char_code in cons_iter(value):
+                if isinstance(char_code, int):
                     try:
-                        result += chr(charCode)
+                        result += chr(char_code)
                     except ValueError:
                         # Can't convert this number to a character
-                        warn("cannot convert", charCode, "to character")
+                        warn("cannot convert", char_code, "to character")
                         pass
                 else:
                     error("argument of string must be list of Ints, not of",
-                          self.tl_type(charCode))
+                          self.tl_type(char_code))
                     return nil
             return result
         else:
@@ -498,7 +517,7 @@ class Program:
 
     @function
     def tl_chars(self, value):
-        if type(value) is str:
+        if isinstance(value, str):
             result = nil
             for char in reversed(value):
                 result = (ord(char), result)
@@ -509,15 +528,16 @@ class Program:
 
     @macro
     def tl_def(self, name, value):
-        if type(name) is int:
-            error("cannot def integer")
-        elif type(name) is tuple:
-            error("cannot def list")
-        elif name in self.globalNames:
-            error("name already in use")
+        if isinstance(name, str):
+            if name in self.global_names:
+                error("name already in use")
+                return nil
+            else:
+                self.global_names[name] = self.tl_eval(value)
+                return name
         else:
-            self.globalNames[name] = self.tl_eval(value)
-        return name
+            error("cannot define", tl_type(name))
+            return nil
 
     @macro
     def tl_if(self, cond, trueval, falseval):
@@ -537,15 +557,15 @@ class Program:
     def tl_load(self, module):
         if not module.endswith(".tl"):
             module += ".tl"
-        abspath = os.path.abspath(os.path.join(self.modulePaths[-1], module))
-        moduleDirectory, moduleName = os.path.split(abspath)
+        abspath = os.path.abspath(os.path.join(self.module_paths[-1], module))
+        module_directory, module_name = os.path.split(abspath)
         if abspath not in self.modules:
             # Module has not already been loaded
             try:
                 with open(abspath) as f:
-                    moduleCode = f.read()
+                    module_code = f.read()
             except (FileNotFoundError, IOError):
-                error("could not load", moduleName, "from", moduleDirectory)
+                error("could not load", module_name, "from", module_directory)
                 return nil
             else:
                 # Add the module to the list of loaded modules
@@ -553,16 +573,16 @@ class Program:
                 # Push the module's directory to the stack of module
                 # directories--this allows relative paths in load calls
                 # from within the module
-                self.modulePaths.append(moduleDirectory)
+                self.module_paths.append(module_directory)
                 # Execute the module code
-                self.execute(moduleCode)
+                self.execute(module_code)
                 # Put everything back the way it was before loading
-                self.modulePaths.pop()
+                self.module_paths.pop()
         return "Loaded %s" % module
 
     @macro
     def tl_help(self):
-        return helpText
+        return help_text
 
     @macro
     def tl_restart(self):
@@ -576,10 +596,10 @@ class Program:
     @property
     def quiet(self):
         # True (suppress output) while in process of loading modules
-        return len(self.modulePaths) > 1
+        return len(self.module_paths) > 1
 
 
-def runFile(filename, environment=None):
+def run_file(filename, environment=None):
     if environment is None:
         environment = Program(repl=False)
     try:
@@ -600,7 +620,7 @@ def repl(environment=None):
     print("(welcome to tinylisp)")
     if environment is None:
         environment = Program(repl=True)
-    instruction = inputInstruction()
+    instruction = input_instruction()
     while True:
         try:
             environment.execute(instruction)
@@ -614,11 +634,11 @@ def repl(environment=None):
         except Exception as err:
             error(err)
             break
-        instruction = inputInstruction()
+        instruction = input_instruction()
     print("Bye!")
 
 
-def inputInstruction():
+def input_instruction():
     try:
         instruction = input("tl> ")
     except (EOFError, KeyboardInterrupt):
@@ -626,7 +646,7 @@ def inputInstruction():
     return instruction
 
 
-helpText = """
+help_text = """
 Enter expressions at the prompt.
 
 - Any run of digits is an integer.
@@ -696,8 +716,7 @@ if __name__ == "__main__":
         # User specified one or more files--run them
         environment = Program()
         for filename in sys.argv[1:]:
-            runFile(filename, environment)
+            run_file(filename, environment)
     else:
         # No filename specified, so...
         repl()
-
