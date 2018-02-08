@@ -530,7 +530,7 @@ class Program:
     def tl_def(self, name, value):
         if isinstance(name, str):
             if name in self.global_names:
-                error("name already in use")
+                error("name", name, "already in use")
                 return nil
             else:
                 self.global_names[name] = self.tl_eval(value)

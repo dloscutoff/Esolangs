@@ -10,7 +10,7 @@
 
 (def macro
   (q
-   (() (params expr) (list nil params expr))))
+    (() (params expr) (list nil params expr))))
 
 (def lambda (macro (params expr) (list params expr)))
 

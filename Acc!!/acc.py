@@ -8,10 +8,14 @@ def main(codeFile=None):
         codeFile = sys.argv[1]
     elif codeFile is None:
         codeFile = input("Please supply a filename: ")
-    with open(codeFile) as f:
-        code = f.readlines()
-    code = translate(code)
-    exec(code, {"inputStream": inputStream()})
+    try:
+        with open(codeFile) as f:
+            code = f.readlines()
+        code = translate(code)
+        exec(code, {"inputStream": inputStream()})
+    except:
+        print("Acc!!\n", file=sys.stderr)
+        raise
 
 def inputStream():
     buffer = ""
