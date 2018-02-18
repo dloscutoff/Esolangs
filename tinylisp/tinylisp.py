@@ -95,11 +95,12 @@ builtins = {"tl_cons": "c",
             "tl_disp": "disp",
             "tl_string": "string",
             "tl_chars": "chars",
-            # The following four are macros:
+            # The following five are macros:
             "tl_def": "d",
             "tl_if": "i",
             "tl_quote": "q",
             "tl_load": "load",
+            "tl_comment": "comment",
             # The following three are intended for repl use:
             "tl_help": "help",
             "tl_restart": "restart",
@@ -109,12 +110,13 @@ builtins = {"tl_cons": "c",
 # These are functions and macros that should not output their return
 # values when called at the top level (except in repl mode)
 
-top_level_quiet_fns = ["tl_def", "tl_disp", "tl_load"]
+top_level_quiet_fns = ["tl_def", "tl_disp", "tl_load", "tl_comment"]
 
 # These are functions and macros that cannot be called from other
 # functions or macros, only from the top level
 
-top_level_only_fns = ["tl_load", "tl_help", "tl_restart", "tl_quit"]
+top_level_only_fns = ["tl_load", "tl_comment", "tl_help", "tl_restart",
+                      "tl_quit"]
 
 
 # Decorators for member functions that implement builtins
@@ -581,6 +583,10 @@ class Program:
         return "Loaded %s" % module
 
     @macro
+    def tl_comment(self, *args):
+        return nil
+
+    @macro
     def tl_help(self):
         return help_text
 
@@ -612,6 +618,9 @@ def run_file(filename, environment=None):
     else:
         try:
             environment.execute(code)
+        except RecursionError:
+            error("recursion depth exceeded. How could you forget "
+                  "to use tail calls?!")
         except UserQuit:
             pass
 

@@ -80,10 +80,35 @@
           (insert-end (q arg) (head args))
           (tail args))))))
 
-(comment Example use of substitute to emulate closures: returns a single-argument function that adds a number to its argument)
+(def partial
+  (lambda fn-and-params
+    (list
+      (filter
+        (lambda (param) (type? param Name))
+        (tail fn-and-params))
+      (cons (quote (head fn-and-params))
+        (map
+          (lambda (param)
+            (if (type? param Name)
+              param
+              (quote (htail param))))
+          (tail fn-and-params))))))
+
+(comment TODO: a more user-friendly version that can be called something like this: (partial add2 ? 42))
+(comment and produces something like this: ((#0) ((q <builtin function tl_add2>) #0 (q 42))))
+
+(comment Example of a partial function: add-n returns a single-argument function that adds a number to its argument)
 (def add-n
+  (lambda (num)
+    (partial add2
+      (q x)
+      (list (q _num) num))))
+
+(comment Another approach using substitute)
+(def add-n-2
   (lambda (num)
     (substitute
       (q _num)
       (quote num)
-      (lambda (x) (add2 _num x)))))
+      (lambda (x) (add2 x _num)))))
+

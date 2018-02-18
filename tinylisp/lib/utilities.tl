@@ -14,8 +14,6 @@
 
 (def lambda (macro (params expr) (list params expr)))
 
-(def comment (macro words nil))
-
 (def quote
   (lambda (expr)
     (list (q q) expr)))
