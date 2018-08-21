@@ -68,7 +68,16 @@ On Linux:
 
 ### Flags
 
-For ease of debugging and/or the pure pleasure of watching the code run, two flags are provided:
+Command-line flags must be specified before the code file name.
+
+Two flags allow for decimal I/O:
+
+- `-u` converts each command-line argument from a list of nonnegative decimal integers (e.g. `1,2,0,3`) to a series of unary numbers separated by `0`s (`101100111`), and performs the reverse transformation on the output.
+- `-U` converts each command-line argument from a list of signed decimal integers to a series of *signed unary* numbers separated by `0`s. Signed unary represents each number with a leading `0` for negative numbers and zero, followed by the unary representation of the number's absolute value: `2` => `11`, `-2` => `011`, `0` => `0`. A command-line argument of `1,-2,0,3` would correspond to the signed unary numbers `1`, `011`, `0`, and `111`, and therefore the program's input would be `10011000111`. The reverse transformation is performed on the output.
+
+Note for using the `-U` flag: if your first command-line input starts with a minus sign, you may need to include `--` before it so the interpreter doesn't try to interpret it as a flag.
+
+Two flags are provided for ease of debugging and/or the pure pleasure of watching the code run:
 
 - `-s` manually steps through the program, requiring the user to press enter at each tick
 - `-p num` pauses for `num` seconds after each tick
