@@ -355,7 +355,7 @@ class Sink:
         if self.ioFormat == UNSIGNED_UNARY:
             self.output += str(len(self.queue))
         elif self.ioFormat == SIGNED_UNARY:
-            if self.queue[0].value == 0:
+            if self.queue and self.queue[0].value == 0:
                 self.queue.pop(0)
                 if self.queue:
                     self.output += "-"
