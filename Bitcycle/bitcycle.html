@@ -1,0 +1,41 @@
+<html>
+<head>
+<title>BitCycle interpreter</title>
+<!--
+Designed and written 2017, 2020 by D. Loscutoff
+-->
+<link rel="stylesheet" type="text/css" href="bitcycle.css">
+</head>
+
+<body>
+<h1><a href="https://github.com/dloscutoff/Esolangs/tree/master/BitCycle"><span class="blue">Bit</span><span class="green">Cycle</span></a></h1>
+<div id="source-and-inputs">
+    <div id="source-container" class="container">
+        <textarea id="source" placeholder="Enter your program here" wrap="off"></textarea>
+    </div>
+    <div id="inputs-container" class="container">
+        <textarea id="inputs" placeholder="Inputs" wrap="off"></textarea>
+    </div>
+</div>
+<div id="canvas-and-output" display="none">
+    <div id="canvas-container" class="container" onclick="canvasClick()">
+        <canvas id="playfield" height="0" width="0"></canvas>
+    </div>
+    <div id="output-container" class="container">
+        <textarea id="outputs" placeholder="Output" wrap="off" readonly></textarea>
+    </div>
+</div>
+<div id="controls-container" class="container clearfix">
+    <input type="button" id="run" class="control so-box" value="Run" onclick="runBtnClick()" />
+    <input type="button" id="pause" class="control so-box" value="Pause" onclick="program.pause()" />
+    <input type="button" id="step" class="control so-box" value="Step" onclick="stepBtnClick()" />
+    <span id="done" class="control so-box" style="display:none">Done.</span>
+    <input type="button" id="reset" class="control so-box" value="Reset" onclick="resetProgram()" />
+</div>
+<div id="options-container" class="container">
+    <div class="option so-box">Ticks per second: <span id="ticks-per-second" contenteditable>10</span>
+    </div>
+</div>
+<script src="bitcycle.js"></script>
+</body>
+</html>
