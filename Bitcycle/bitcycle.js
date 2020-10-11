@@ -9,7 +9,7 @@ const SOUTH = 3;
 const ZERO_BIT = 1;
 const ONE_BIT = 2;
 
-const CIRCLE_RADIUS = 6;
+const BIT_SHAPE_RADIUS = 7;
 const GRID_SQUARE_SIZE = 16;
 const GRID_FONT_SIZE = 14;
 
@@ -85,6 +85,32 @@ function turnLeft(direction) {
     return newDirection;
 }
 
+function intToUnary(number) {
+    number = Math.trunc(number);
+    return "1".repeat(Math.abs(number));
+}
+
+function intToSignedUnary(number) {
+    number = Math.trunc(number);
+    if (number <= 0) {
+        return "0" + "1".repeat(Math.abs(number));
+    } else {
+        return "1".repeat(number);
+    }
+}
+
+function unaryToInt(unary) {
+    return unary.length;
+}
+
+function signedUnaryToInt(unary) {
+    if (unary[0] === "0") {
+        return -(unary.length - 1);
+    } else {
+        return unary.length;
+    }
+}
+
 // Define Bit class
 function Bit(x, y, direction, value) {
     this.x = x;
@@ -140,9 +166,14 @@ Collector.prototype.toString = function() {
 }
 
 // Define Source class
-function Source(x, y, inputString) {
+function Source(x, y, inputString, ioFormat) {
     this.x = x;
     this.y = y;
+    if (ioFormat === "unsigned") {
+        inputString = inputString.split(",").map(intToUnary).join("0");
+    } else if (ioFormat === "signed") {
+        inputString = inputString.split(",").map(intToSignedUnary).join("0");
+    }
     this.queue = inputString.split("");
     this.open = (this.queue.length > 0);
 }
@@ -163,16 +194,47 @@ Source.prototype.toString = function() {
 }
 
 // Define Sink class
-function Sink(x, y, idNumber) {
-    this.x = x;
-    this.y = y;
+function Sink(idNumber, ioFormat) {
     this.idNumber = idNumber;
+    this.ioFormat = ioFormat;
+    this.buffer = "";
 }
 
-// TODO: handle multiple sinks--idNumber should determine which row they output to
 Sink.prototype.output = function(bit) {
-    var outputs = document.getElementById('outputs');
-    outputs.value += bit.value;
+    if (this.ioFormat === "raw") {
+        this.buffer += bit.value;
+        this.flush();
+    } else if (this.ioFormat === "unsigned") {
+        if (bit.value === 1) {
+            this.buffer += bit.value;
+        } else {
+            this.flush();
+        }
+    } else if (this.ioFormat === "signed") {
+        if (bit.value === 1 || this.buffer === "") {
+            this.buffer += bit.value;
+        } else {
+            this.flush();
+        }
+    }
+}
+
+Sink.prototype.flush = function() {
+    var outputArea = document.getElementById('output' + this.idNumber);
+    if (this.ioFormat === "raw") {
+        outputArea.textContent += this.buffer;
+    } else if (this.ioFormat === "unsigned") {
+        if (outputArea.textContent !== "") {
+            outputArea.textContent += ",";
+        }
+        outputArea.textContent += unaryToInt(this.buffer);
+    } else if (this.ioFormat === "signed") {
+        if (outputArea.textContent !== "") {
+            outputArea.textContent += ",";
+        }
+        outputArea.textContent += signedUnaryToInt(this.buffer);
+    }
+    this.buffer = "";
 }
 
 Sink.prototype.toString = function() {
@@ -190,11 +252,12 @@ Device.prototype.toString = function() {
 }
 
 // Define Program class
-function Program(codeLines, inputLines, speed) {
+function Program(codeLines, inputLines, speed, ioFormat) {
     var sinkNumber = 0;
     
     this.setSpeed(speed);
     this.done = false;
+    this.paused = true;
     
     this.height = codeLines.length;
     this.width = Math.max(...codeLines.map(line => line.length));
@@ -225,20 +288,33 @@ function Program(codeLines, inputLines, speed) {
                     if (inputLines.length > 0) {
                         inputData = inputLines.shift();
                     } else {
-                        inputData = ""; 
+                        inputData = "";
                     }
-                    var source = new Source(x, y, inputData);
+                    var source = new Source(x, y, inputData, ioFormat);
                     if (source.open) {
                         this.sources.push(source);
                     }
                     row.push(source);
                 } else if (chr === "!") {
                     // An exclamation point is a sink
-                    var sink = new Sink(x, y, sinkNumber);
-                    sinkNumber++;
+                    var sink = new Sink(sinkNumber, ioFormat);
                     this.sinks.push(sink);
                     row.push(sink);
-                } else if ("01".indexOf(chr) > -1) {
+                    // Create an output area for this sink
+                    var outputArea = document.createElement('div');
+                    outputArea.setAttribute("id", "output" + sinkNumber + "Area");
+                    outputArea.setAttribute("class", "output");
+                    var outputLabel = document.createElement('span');
+                    outputArea.setAttribute("id", "output" + sinkNumber + "Label");
+                    outputLabel.textContent = "Out" + (sinkNumber + 1) + ": ";
+                    outputArea.appendChild(outputLabel);
+                    var output = document.createElement('span');
+                    output.setAttribute("id", "output" + sinkNumber);
+                    output.textContent = "";
+                    outputArea.appendChild(output);
+                    document.getElementById('output-container').appendChild(outputArea);
+                    sinkNumber++;
+                } else if (chr === "0" || chr === "1") {
                     // A 0 or 1 is a bit
                     this.activeBits.push(new Bit(x, y, EAST, chr));
                     row.push(new Device(" "));
@@ -261,6 +337,7 @@ Program.prototype.setSpeed = function(speed) {
 }
 
 Program.prototype.run = function() {
+    this.paused = false;
     this.tick();
     if (!this.done) {
         this.timeout = window.setTimeout(this.run.bind(this), 1000 / this.speed);
@@ -269,7 +346,7 @@ Program.prototype.run = function() {
 
 Program.prototype.tick = function() {
     if (this.done) {
-        this.halt();
+        haltProgram();
         return;
     }
     
@@ -374,7 +451,7 @@ Program.prototype.tick = function() {
                             break;
                         case "@":
                             // Halt execution
-                            this.halt();
+                            haltProgram();
                             break;
                         default:
                             // No-op
@@ -416,7 +493,7 @@ Program.prototype.tick = function() {
             this.reset();
         } else if (this.sources.length === 0) {
             // If there are no collectors to open and no sources with data, halt
-            this.halt();
+            haltProgram();
         }
     }
     
@@ -478,12 +555,15 @@ Program.prototype.reset = function() {
 
 Program.prototype.pause = function() {
     window.clearTimeout(this.timeout);
+    this.paused = true;
 }
 
 Program.prototype.halt = function() {
     this.done = true;
     this.pause();
-    endProgram();
+    for (var s = 0; s < this.sinks.length; s++) {
+        this.sinks[s].flush();
+    }
 }
 
 function displaySource(grid, activeBits) {
@@ -513,17 +593,16 @@ function clearCanvas() {
 
 function drawBitsAt(bitCode, x, y) {
     if (bitCode > 0) {
-        var circleX = (x + 0.5) * GRID_SQUARE_SIZE;
-        var circleY = (y + 0.5) * GRID_SQUARE_SIZE;
-        var circleColor;
+        var centerX = (x + 0.5) * GRID_SQUARE_SIZE;
+        var centerY = (y + 0.5) * GRID_SQUARE_SIZE;
         if (bitCode === ZERO_BIT) {
-            circleColor = BLUE;
+            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS, BLUE);
         } else if (bitCode === ONE_BIT) {
-            circleColor = GREEN;
+            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS, GREEN);
         } else {  // Both a zero and a one bit
-            circleColor = TEAL;
+            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS, BLUE);
+            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS, GREEN);
         }
-        drawCircle(circleX, circleY, CIRCLE_RADIUS, circleColor);
     }
 }
 
@@ -531,6 +610,16 @@ function drawCircle(x, y, radius, color) {
     context.fillStyle = color;
     context.beginPath();
     context.arc(x, y, radius, 0, 2*Math.PI);
+    context.fill();
+}
+
+function drawDiamond(x, y, radius, color) {
+    context.fillStyle = color;
+    context.beginPath();
+    context.moveTo(x - radius, y);
+    context.lineTo(x, y - radius);
+    context.lineTo(x + radius, y);
+    context.lineTo(x, y + radius);
     context.fill();
 }
 
@@ -542,35 +631,50 @@ function drawDeviceAt(device, x, y) {
 }
 
 function showEditor() {
-    var sourceCode = document.getElementById('source'),
-        inputs = document.getElementById('inputs'),
-        canvasWrapper = document.getElementById('canvas-container'),
-        run = document.getElementById('run'),
-        pause = document.getElementById('pause'),
-        step = document.getElementById('step'),
-        done = document.getElementById('done');
+    var editor = document.getElementById('editor'),
+        interpreter = document.getElementById('interpreter'),
+        startEdit = document.getElementById('start-edit'),
+        executionControls = document.getElementById('execution-controls'),
+        sourceCode = document.getElementById('source');
     
-    // Show the input fields and run/pause/step buttons, hide the canvas and Done message
-    sourceCode.style.display = "block";
-    inputs.style.display = "block";
-    canvasWrapper.style.display = "none";
-    run.style.display = "block";
-    pause.style.display = "block";
-    step.style.display = "block";
-    done.style.display = "none";
+    editor.style.display = "block";
+    interpreter.style.display = "none";
+    startEdit.value = "Execute";
+    
+    executionControls.style.display = "none";
     
     sourceCode.focus();
 }
 
 function hideEditor() {
-    var sourceCode = document.getElementById('source'),
-        inputs = document.getElementById('inputs'),
-        canvasWrapper = document.getElementById('canvas-container');
+    var editor = document.getElementById('editor'),
+        interpreter = document.getElementById('interpreter'),
+        startEdit = document.getElementById('start-edit'),
+        executionControls = document.getElementById('execution-controls');
     
-    // Hide the input fields, show the canvas
-    sourceCode.style.display = "none";
-    inputs.style.display = "none";
-    canvasWrapper.style.display = "block";
+    editor.style.display = "none";
+    interpreter.style.display = "block";
+    startEdit.value = "Edit";
+    
+    executionControls.style.display = "block";
+}
+
+function loadProgram() {
+    var sourceCode = document.getElementById('source'),
+        ticksPerSecond = document.getElementById('ticks-per-second'),
+        inputs = document.getElementById('inputs'),
+        ioFormatSelect = document.getElementById('io-format'),
+        runPause = document.getElementById('run-pause'),
+        step = document.getElementById('step'),
+        done = document.getElementById('done'),
+        haltRestart = document.getElementById('halt-restart');
+    
+    program = new Program(
+        sourceCode.value.split(/\r?\n/),
+        inputs.value.split(/\r?\n/),
+        ticksPerSecond.innerHTML,
+        ioFormatSelect.value
+    );
     
     // Set up the canvas
     canvas.height = program.height * GRID_SQUARE_SIZE;
@@ -580,73 +684,89 @@ function hideEditor() {
     
     // Display the current state of the playfield
     displaySource(program.grid, program.activeBits);
+    
+    runPause.style.display = "block";
+    step.style.display = "block";
+    done.style.display = "none";
+    runPause.value = "Run";
+    haltRestart.value = "Halt";
 }
 
-function resetProgram() {
-    var outputs = document.getElementById('outputs');
-    
-    if (outputs !== null) {
-        outputs.value = null;
-    }
+function unloadProgram() {
     if (program !== null) {
         program.pause();
     }
     program = null;
-    showEditor();
+    // Delete all output areas
+    var outputContainer = document.getElementById('output-container');
+    while (outputContainer.firstChild) {
+        outputContainer.removeChild(outputContainer.lastChild);
+    }
 }
 
-function initProgram() {
-    var sourceCode = document.getElementById('source'),
-        ticksPerSecond = document.getElementById('ticks-per-second'),
-        inputs = document.getElementById('inputs');
-    
-    program = new Program(
-        sourceCode.value.split(/\r?\n/),
-        inputs.value.split(/\r?\n/),
-        ticksPerSecond.innerHTML
-    );
-    hideEditor();
-}
-
-function endProgram() {
-    var run = document.getElementById('run'),
-        pause = document.getElementById('pause'),
+function haltProgram() {
+    var runPause = document.getElementById('run-pause'),
         step = document.getElementById('step'),
-        done = document.getElementById('done');
+        done = document.getElementById('done'),
+        haltRestart = document.getElementById('halt-restart');
     
-    // Hide the run/pause/step buttons, show the Done message
-    run.style.display = "none";
-    pause.style.display = "none";
+    program.halt();
+    
+    runPause.style.display = "none";
     step.style.display = "none";
     done.style.display = "block";
+    haltRestart.value = "Restart";
 }
 
-function runBtnClick() {
-    if (program === null || program.done) {
-        resetProgram();
-        initProgram();
+function startEditBtnClick() {
+    if (program === null) {
+        loadProgram();
+        hideEditor();
     } else {
-        program.pause();
-        var ticksPerSecond = document.getElementById('ticks-per-second');
-        program.setSpeed(ticksPerSecond.innerHTML);
+        unloadProgram();
+        showEditor();
     }
-    program.run();
+}
+
+function runPauseBtnClick() {
+    var runPause = document.getElementById('run-pause');
+    if (program !== null && !program.done) {
+        if (program.paused) {
+            var ticksPerSecond = document.getElementById('ticks-per-second');
+            program.setSpeed(ticksPerSecond.innerText);  // TBD: is innerText the best way to do this?
+            runPause.value = "Pause"
+            program.run();
+        } else {
+            program.pause();
+            runPause.value = "Run"
+        }
+    }
 }
 
 function stepBtnClick() {
-    if (program === null) {
-        initProgram();
+    if (program === null || program.done) {
+        alert("Whoopsie, Step shouldn't be clickable right now");
     } else {
         program.pause();
         program.tick();
     }
 }
 
+function haltRestartBtnClick() {
+    if (!program.done) {
+        haltProgram();
+    } else {
+        unloadProgram();
+        loadProgram();
+    }
+}
+
 function canvasClick() {
     // TBD
-    //resetProgram();
+    //unloadProgram();
 }
 
 var program = null;
 var canvas = document.getElementById("playfield");
 var context = null;
+showEditor();

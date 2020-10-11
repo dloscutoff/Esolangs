@@ -1,8 +1,7 @@
 .container {
-    /*width: 49%;*/
-    width: calc(50% - 6px); 
     padding: 2px;
     display: inline-block;
+    width: 100%;
 }
 .so-box {
     font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -30,6 +29,10 @@
     margin-right: 25px;
     float: left;
 }
+.output {
+    font-family: "Courier New",monospace;
+    font-weight: bold;
+}
 .blue {
     color: #56e;
 }
@@ -38,7 +41,7 @@
 }
 h1 {
     text-align: center;
-    font-family: monospace;
+    font-family: Consolas,monospace;
 }
 a {
     text-decoration: none;
@@ -50,53 +53,21 @@ textarea {
     display: block;
     white-space: pre;
     overflow: auto;
-    height: 100px;
     width: 100%;
     max-width: 100%;
+    min-width: 100%;
     min-height: 25px;
+}
+canvas {
+    border: 1px solid #bbb;
 }
 span[contenteditable] {
     padding: 2px 6px;
     background: #56c;
     color: #fff;
 }
-#reset {
-    float: right;
-}
-#source-display-wrapper , #stdin-display-wrapper{
-    display: none;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    border: 1px solid black;
-    box-sizing: border-box;
-}
-#source-display , #stdin-display{
-    font-family: monospace;
-    white-space: pre;
-    padding: 2px;
-}
-#playfield{
-    border: 1px solid #bbb;
-}
 #done {
     border: #444;
     background: #888;
     cursor: default;
-}
-.clearfix:after {
-    content:".";
-    display: block;
-    height: 0;
-    clear: both;
-    visibility: hidden;
-}
-.clearfix {
-    display: inline-block;
-}
-* html .clearfix {
-    height: 1%;
-}
-.clearfix {
-    display: block;
 }

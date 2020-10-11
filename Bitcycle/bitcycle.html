@@ -8,32 +8,42 @@ Designed and written 2017, 2020 by D. Loscutoff
 </head>
 
 <body>
-<h1><a href="https://github.com/dloscutoff/Esolangs/tree/master/BitCycle"><span class="blue">Bit</span><span class="green">Cycle</span></a></h1>
-<div id="source-and-inputs">
+<h1><a href="https://github.com/dloscutoff/Esolangs/tree/master/BitCycle" target="_blank"><span class="blue">Bit</span><span class="green">Cycle</span></a></h1>
+<div id="main-controls" class="container">
+    <input type="button" id="start-edit" class="control so-box" value="Start/Edit" onclick="startEditBtnClick()" />
+</div>
+<div id="editor">
     <div id="source-container" class="container">
-        <textarea id="source" placeholder="Enter your program here" wrap="off"></textarea>
+        <textarea id="source" placeholder="Enter your program here" rows="10" wrap="off" data-gramm_editor="false" spellcheck="false" autocapitalize="none" autocorrect="off"></textarea>
     </div>
     <div id="inputs-container" class="container">
-        <textarea id="inputs" placeholder="Inputs" wrap="off"></textarea>
+        <textarea id="inputs" placeholder="Inputs, one per line" rows="3" wrap="off" data-gramm_editor="false" spellcheck="false" autocapitalize="none" autocorrect="off"></textarea>
+    </div>
+    <div id="options" class="container">
+        <label for="io-format">Input/output format:</label>
+        <select name="io-format" id="io-format">
+            <option value="raw">Bits</option>
+            <option value="unsigned">Unsigned ints (-u)</option>
+            <option value="signed">Signed ints (-U)</option>
+        </select>
     </div>
 </div>
-<div id="canvas-and-output" display="none">
+<div id="interpreter">
     <div id="canvas-container" class="container" onclick="canvasClick()">
         <canvas id="playfield" height="0" width="0"></canvas>
     </div>
-    <div id="output-container" class="container">
-        <textarea id="outputs" placeholder="Output" wrap="off" readonly></textarea>
+    <div id="output-container" class="container"></div>
+</div>
+<div id="execution-controls">
+    <div id="execution-buttons" class="container">
+        <input type="button" id="run-pause" class="control so-box" value="Run/Pause" onclick="runPauseBtnClick()" />
+        <input type="button" id="step" class="control so-box" value="Step" onclick="stepBtnClick()" />
+        <span id="done" class="control so-box">Done.</span>
+        <input type="button" id="halt-restart" class="control so-box" value="Halt/Restart" onclick="haltRestartBtnClick()" />
     </div>
-</div>
-<div id="controls-container" class="container clearfix">
-    <input type="button" id="run" class="control so-box" value="Run" onclick="runBtnClick()" />
-    <input type="button" id="pause" class="control so-box" value="Pause" onclick="program.pause()" />
-    <input type="button" id="step" class="control so-box" value="Step" onclick="stepBtnClick()" />
-    <span id="done" class="control so-box" style="display:none">Done.</span>
-    <input type="button" id="reset" class="control so-box" value="Reset" onclick="resetProgram()" />
-</div>
-<div id="options-container" class="container">
-    <div class="option so-box">Ticks per second: <span id="ticks-per-second" contenteditable>10</span>
+    <div id="execution-options" class="container">
+        <div class="option so-box">Ticks per second: <span id="ticks-per-second" contenteditable>10</span>
+        </div>
     </div>
 </div>
 <script src="bitcycle.js"></script>
