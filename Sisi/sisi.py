@@ -9,57 +9,55 @@ strRe = re.compile('"([^"]*)"')
 opRe = re.compile('([-+*/<>=])')
 regexes = {"int":intRe, "id":idRe, "str":strRe, "op":opRe}
 
+class FatalError(Exception): pass
+
 def parseCode(code):
     instSet = {}
-    maxLine = 0
+    maxLine = -1
     for line in code:
         line = line.strip()
         if line == "":
             continue
-        tokens = line.split(maxsplit = 2)
 
-        # First token is line number
-        tk = tokens.pop(0)
-        try:
-            lineNum = int(tk)
-        except:
-            die("expecting line number, got", tk)
-        if lineNum <= 0:
-            die("line numbers must be positive, got", lineNum)
-        elif lineNum <= maxLine:
+        # First integer on line is line number
+        lineNumMatch = intRe.match(line)
+        if lineNumMatch:
+            line = line[lineNumMatch.end():].strip()
+            lineNum = int(lineNumMatch.group())
+        else:
+            die("all nonempty lines must begin with a line number")
+        if lineNum <= maxLine:
             die("line numbers must increase, got", lineNum, "after", maxLine)
         else:
             maxLine = lineNum
 
         # Second token is statement name
-        if tokens == []:
+        statementMatch = idRe.match(line)
+        if statementMatch:
+            line = line[statementMatch.end():].strip()
+            statement = statementMatch.group()
+        else:
             die("expecting statement on line", lineNum)
-        else:
-            tk = tokens.pop(0)
-        if tk not in ["set","print","jumpif","jump"]:
-            die("expecting statement name, got", tk)
-        else:
-            statement = tk
+        if statement not in ["set","print","jumpif","jump"]:
+            die("invalid statement name:", statement)
 
         # Scan the arguments
         args = []
-        if tokens == []:
+        if not line:
             die("expecting arguments after statement on line", lineNum)
         else:
-            argString = tokens[0]
-            while argString != "":
+            while line != "":
                 for kind, regex in regexes.items():
-                    m = regex.match(argString)
-                    if m != None:
+                    valueMatch = regex.match(line)
+                    if valueMatch:
                         break
                 else:
-                    tk = argString.split()[0]
-                    die("did not recognize token", argString)
-                value = m.group(1)
+                    die("invalid expression:", line.split()[0])
+                value = valueMatch.group(1)
                 if kind == "int":
                     value = int(value)
                 args.append((kind, value))
-                argString = argString[m.end():].strip()
+                line = line[valueMatch.end():].strip()
 
         # Store instructions as {lineNum:[statement,(argtype,argval),...]}
         instSet[lineNum] = [statement] + args
@@ -201,13 +199,13 @@ def runFile(filename):
         else:
             instructions = parseCode(code)
             runInstructions(instructions)
-    except Exception:
+    except FatalError:
         # The error message is printed where it is raised; quit silently
         pass
 
 def die(*message):
     print("ERROR:", *message)
-    raise Exception()
+    raise FatalError()
 
 if __name__ == "__main__":
     import sys

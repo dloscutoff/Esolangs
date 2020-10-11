@@ -1,0 +1,28 @@
+Count i while 100-i {
+i%3/2*2
+Count f while _/2 {
+Write 70
+Write 105
+Write 122
+Write 122
+1
+}
+_+i%5/4*2
+Count b while _/2 {
+Write 66
+Write 117
+Write 122
+Write 122
+1
+}
+Count d while 1-_ {
+(i+1)/10
+Count z while _ {
+Write 48+_
+0
+}
+Write 48+(i+1)%10
+1
+}
+Write 10
+}

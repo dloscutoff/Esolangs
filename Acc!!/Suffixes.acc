@@ -1,0 +1,26 @@
+# Exploded suffixes, http://codegolf.stackexchange.com/questions/96271/exploded-suffixes
+# 150 bytes golfed, using tab as the ending delimiter instead of newline
+
+# Initialize the accumulator with the first input character
+N
+# Loop until most recent input was a newline (ASCII 10)
+Count c while _/128^c - 10 {
+    # Input another character and add it at the left end (next higher power of 128)
+    _ + N*128^(c+1)
+}
+
+# Loop over each suffix, until only the newline is left
+Count i while _ - 10 {
+    # Loop over powers of 128 until the newline
+    Count j while _/128^j - 10 {
+        # Loop (j+1) times
+        Count k while j + 1 - k {
+            # Output the j'th character
+            Write _ / 128^j % 128
+        }
+    }
+    # Output a newline
+    Write 10
+    # Remove a character
+    _/128
+}

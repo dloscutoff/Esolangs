@@ -1,0 +1,73 @@
+.container {
+    padding: 2px;
+    display: inline-block;
+    width: 100%;
+}
+.so-box {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+    padding: .3em .7em;
+    font-size: 1em;
+    line-height: 1.1;
+    border: 1px solid #45a;
+    -webkit-box-shadow: 0 2px 2px rgba(0, 0, 0, 0.3), 0 2px 0 rgba(255, 255, 255, 0.15) inset;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    background: #78e;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.3), 0 2px 0 rgba(255, 255, 255, 0.15) inset;
+}
+.control {
+    display: inline-block;
+    border-radius: 6px;
+    float: left;
+    margin-right: 25px;
+    cursor: pointer;
+}
+.option {
+    padding: 10px 20px;
+    margin-right: 25px;
+    float: left;
+}
+.output {
+    font-family: "Courier New",monospace;
+    font-weight: bold;
+}
+.blue {
+    color: #56e;
+}
+.green {
+    color: #0c0;
+}
+h1 {
+    text-align: center;
+    font-family: Consolas,monospace;
+}
+a {
+    text-decoration: none;
+}
+input, textarea {
+    box-sizing: border-box;
+}
+textarea {
+    display: block;
+    white-space: pre;
+    overflow: auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
+    min-height: 25px;
+}
+canvas {
+    border: 1px solid #bbb;
+}
+span[contenteditable] {
+    padding: 2px 6px;
+    background: #56c;
+    color: #fff;
+}
+#done {
+    border: #444;
+    background: #888;
+    cursor: default;
+}
