@@ -252,12 +252,21 @@ Device.prototype.toString = function() {
 }
 
 // Define Program class
-function Program(codeLines, inputLines, speed, ioFormat) {
+function Program(codeLines, inputLines, speed, ioFormat, expand) {
     var sinkNumber = 0;
     
     this.setSpeed(speed);
     this.done = false;
     this.paused = true;
+    
+    if (expand) {
+        // Add a blank line every other line and an empty column every other column
+        for (var y = codeLines.length - 1; y >= 0; y--) {
+            var newLine = " " + codeLines[y].split("").join(" ") + " ";
+            codeLines.splice(y, 1, "", newLine);
+        }
+        codeLines.push("");
+    }
     
     this.height = codeLines.length;
     this.width = Math.max(...codeLines.map(line => line.length));
@@ -664,6 +673,7 @@ function loadProgram() {
         ticksPerSecond = document.getElementById('ticks-per-second'),
         inputs = document.getElementById('inputs'),
         ioFormatSelect = document.getElementById('io-format'),
+        expand = document.getElementById('expand'),
         runPause = document.getElementById('run-pause'),
         step = document.getElementById('step'),
         done = document.getElementById('done'),
@@ -673,7 +683,8 @@ function loadProgram() {
         sourceCode.value.split(/\r?\n/),
         inputs.value.split(/\r?\n/),
         ticksPerSecond.innerHTML,
-        ioFormatSelect.value
+        ioFormatSelect.value,
+        expand.checked
     );
     
     // Set up the canvas
@@ -734,21 +745,21 @@ function runPauseBtnClick() {
         if (program.paused) {
             var ticksPerSecond = document.getElementById('ticks-per-second');
             program.setSpeed(ticksPerSecond.innerText);  // TBD: is innerText the best way to do this?
-            runPause.value = "Pause"
+            runPause.value = "Pause";
             program.run();
         } else {
             program.pause();
-            runPause.value = "Run"
+            runPause.value = "Run";
         }
     }
 }
 
 function stepBtnClick() {
-    if (program === null || program.done) {
-        alert("Whoopsie, Step shouldn't be clickable right now");
-    } else {
+    var runPause = document.getElementById('run-pause');
+    if (program !== null && !program.done) {
         program.pause();
         program.tick();
+        runPause.value = "Run";
     }
 }
 
