@@ -1,0 +1,21 @@
+h1 {
+    text-align: center;
+}
+a {
+    text-decoration: none;
+}
+.blue {
+    color: #56e;
+}
+.green {
+    color: #0c0;
+}
+.orange {
+    color: #f81;
+}
+#ouroboros {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+#bitcycle {
+    font-family: Consolas, monospace;
+}

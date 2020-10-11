@@ -1,40 +1,25 @@
 <html>
 <head>
-<title>Ouroboros interpreter</title>
+<title>Esolang interpreters</title>
 <!--
-Designed and written 2015 by D. Loscutoff
-Much of the HTML and CSS was taken from this Befunge interpreter by Ingo Bürk: http://codegolf.stackexchange.com/a/40331/16766
+Interpreters designed and written 2015-2020 by D. Loscutoff
 -->
-<link rel="stylesheet" type="text/css" href="Ouroboros/ouroboros.css">
-<script src="Ouroboros/ouroboros.js"></script>
+<link rel="stylesheet" type="text/css" href="directory.css">
 </head>
 
 <body>
-<h1><a href="https://github.com/dloscutoff/Esolangs/tree/master/Ouroboros">Ouroboros</a></h1>
-<div class="container">
-    <textarea id="source" placeholder="Enter your program here" wrap="off"></textarea>
-    <div id="source-display-wrapper" onclick="sourceDisplayClick()">
-        <div id="source-display"></div>
-    </div>
-</div>
-<div id="stdin-container" class="container">
-    <textarea id="stdin" placeholder="Input" wrap="off"></textarea>
-    <div id="stdin-display-wrapper" onclick="stdinDisplayClick()">
-        <div id="stdin-display"></div>
-    </div>
-</div>
-<div id="controls-container" class="container clearfix">
-    <input type="button" id="run" class="control so-box" value="Run" onclick="runBtnClick()" />
-    <input type="button" id="pause" class="control so-box" value="Pause" onclick="program.halt()" />
-    <input type="button" id="step" class="control so-box" value="Step" onclick="stepBtnClick()" />
-    <input type="button" id="reset" class="control so-box" value="Reset" onclick="resetProgram()" />
-</div>
-<div id="stdout-container" class="container">
-    <textarea id="stdout" placeholder="Output" wrap="off" readonly></textarea>
-</div>
-<div id="options-container" class="container">
-    <div class="option so-box">Steps per Second: <span id="steps-per-second" contenteditable>10</span>
-    </div>
-</div>
+<h1>Choose a language:</h1>
+<ul>
+    <li id="bitcycle">
+        <h2><a href="https://dloscutoff.github.io/Esolangs/BitCycle/">
+            <span class="blue">Bit</span><span class="green">Cycle</span>
+        </a></h2>
+    </li>
+    <li id="ouroboros">
+        <h2><a href="https://dloscutoff.github.io/Esolangs/Ouroboros/">
+            <span class="orange">Ouroboros</span>
+        </a></h2>
+    </li>
+</ul>
 </body>
 </html>
