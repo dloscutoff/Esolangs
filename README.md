@@ -28,6 +28,12 @@ Each line of code is a loop, which can be shortened or lengthened to achieve con
 | [JavaScript intepreter](https://dloscutoff.github.io/Esolangs/Ouroboros)
 | [Origins](https://codegolf.stackexchange.com/a/61624/16766)
 
+### Regenerate
+
+Generate strings using regular expression syntax.
+
+[Github](https://github.com/dloscutoff/Esolangs/tree/master/Regenerate)
+
 ### Sisi
 
 A toy language inspired by BASIC.
