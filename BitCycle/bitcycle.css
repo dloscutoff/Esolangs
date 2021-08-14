@@ -39,6 +39,7 @@
 .output {
     font-family: 'Courier New', monospace;
     font-weight: bold;
+    word-wrap: break-word;
 }
 .blue {
     color: #56e;

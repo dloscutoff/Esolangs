@@ -21,6 +21,9 @@ const BLACK = "#000";
 const COLLECTOR_NAMES = "ABCDEFGHIJKLMNOPQRSTUWXYZ";
 const SIMPLE_DEVICES = ">^<v~+={}/\\|-@";
 
+const PLAIN_CHARS = "@! {>\\/|-^=}?\nv+<.~&`()[]#:;,*\"$'%";
+const ENCODED_CHARS = Object.freeze("abcdeijlmnopqrstwxz_A_B_C_D_E_F_H_I_J_L_O_Q_S_T_X".match(/_?./g));
+
 function dx(direction) {
     if (direction === WEST) {
         return -1;
@@ -224,15 +227,15 @@ Sink.prototype.flush = function() {
     if (this.ioFormat === "raw") {
         outputArea.textContent += this.buffer;
     } else if (this.ioFormat === "unsigned") {
-        if (outputArea.textContent !== "") {
-            outputArea.textContent += ",";
+        if (outputArea.innerHTML !== "") {
+            outputArea.innerHTML += ",<wbr />";
         }
-        outputArea.textContent += unaryToInt(this.buffer);
+        outputArea.innerHTML += unaryToInt(this.buffer);
     } else if (this.ioFormat === "signed") {
-        if (outputArea.textContent !== "") {
-            outputArea.textContent += ",";
+        if (outputArea.innerHTML !== "") {
+            outputArea.innerHTML += ",<wbr />";
         }
-        outputArea.textContent += signedUnaryToInt(this.buffer);
+        outputArea.innerHTML += signedUnaryToInt(this.buffer);
     }
     this.buffer = "";
 }
@@ -670,7 +673,7 @@ function loadFromQueryString() {
         var value;
         [key, value] = param.split("=");
         if (key === "p") {
-            sourceCode.value = urlDecode(value);
+            sourceCode.value = unpackCode(value);
         } else if (key === "i") {
             inputs.value = urlDecode(value);
         } else if (key === "f") {
@@ -688,7 +691,7 @@ function generateQueryString() {
         inputs = document.getElementById('inputs'),
         ioFormatSelect = document.getElementById('io-format');
     var params = [
-        ["p", urlEncode(sourceCode.value.replaceAll(/[^ -~\n]/g, "."))],
+        ["p", packCode(sourceCode.value)],
         ["i", urlEncode(inputs.value)],
         ["f", ioFormatSelect.selectedIndex]
     ].filter(([key, value]) => value).map(pair => pair.join("="));
@@ -697,6 +700,48 @@ function generateQueryString() {
 
 function generatePermalink() {
     return location.origin + location.pathname + generateQueryString();
+}
+
+function packCode(unpackedCode) {
+    var packedCode;
+    unpackedCode = unpackedCode.replaceAll(/[^ -~\n]/g, ".");
+    packedCode = unpackedCode.replaceAll(/(.|\n)\1{0,8}/g, run => {
+        var i = PLAIN_CHARS.indexOf(run[0]);
+        var e;
+        if (i >= 0) {
+            e = ENCODED_CHARS[i];
+        } else if (/[A-Z01]/.test(run)) {
+            e = run[0];
+        } else {
+            e = "_" + run[0];
+        }
+        if (run.length === 1) {
+            return e;
+        } else {
+            return e + run.length;
+        }
+    });
+    return packedCode;
+}
+
+function unpackCode(packedCode) {
+    var unpackedCode;
+    unpackedCode = packedCode.replaceAll(/(_?.)([2-9]?)/g, (m, e, num) => {
+        var i = ENCODED_CHARS.indexOf(e);
+        var c;
+        if (i >= 0) {
+            c = PLAIN_CHARS[i];
+        } else {
+            c = e.slice(-1);
+        }
+        if (num === "") {
+            num = 1;
+        } else {
+            num = +num;
+        }
+        return c.repeat(num);
+    });
+    return unpackedCode;
 }
 
 function showEditor() {
