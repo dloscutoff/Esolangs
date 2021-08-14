@@ -32,7 +32,7 @@ Each line of code is a loop, which can be shortened or lengthened to achieve con
 
 Generate strings using regular expression syntax.
 
-[Github](https://github.com/dloscutoff/Esolangs/tree/master/Regenerate)
+[Github](https://github.com/dloscutoff/Esolangs/tree/master/Regenerate) | [Replit](https://replit.com/@dloscutoff/regenerate)
 
 ### Sisi
 
