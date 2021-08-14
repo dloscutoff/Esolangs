@@ -22,23 +22,23 @@ const COLLECTOR_NAMES = "ABCDEFGHIJKLMNOPQRSTUWXYZ";
 const SIMPLE_DEVICES = ">^<v~+={}/\\|-@";
 
 function dx(direction) {
-	if (direction === WEST) {
-		return -1;
-	} else if (direction === EAST) {
-		return 1;
-	} else {
-		return 0;
-	}
+    if (direction === WEST) {
+        return -1;
+    } else if (direction === EAST) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 function dy(direction) {
-	if (direction === NORTH) {
-		return -1;
-	} else if (direction === SOUTH) {
-		return 1;
-	} else {
-		return 0;
-	}
+    if (direction === NORTH) {
+        return -1;
+    } else if (direction === SOUTH) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 function turnRight(direction) {
@@ -639,10 +639,71 @@ function drawDeviceAt(device, x, y) {
     context.fillText(device.toString(), textX, textY);
 }
 
+function urlDecode(value) {
+    try {
+        return atob(value.replaceAll("_", "="));
+    } catch (error) {
+        console.log("Error while decoding " + value);
+        console.log(error);
+        return "";
+    }
+}
+
+function urlEncode(value) {
+    try {
+        return btoa(value).replaceAll("=", "_");
+    } catch (error) {
+        console.log("Error while encoding " + value);
+        console.log(error);
+        return "";
+    }
+}
+
+function loadFromQueryString() {
+    var sourceCode = document.getElementById('source'),
+        inputs = document.getElementById('inputs'),
+        ioFormatSelect = document.getElementById('io-format');
+    var queryString = location.search.slice(1);
+    
+    for (const param of queryString.split("&")) {
+        var key;
+        var value;
+        [key, value] = param.split("=");
+        if (key === "p") {
+            sourceCode.value = urlDecode(value);
+        } else if (key === "i") {
+            inputs.value = urlDecode(value);
+        } else if (key === "f") {
+            ioFormatSelect.selectedIndex = value;
+            if (ioFormatSelect.selectedIndex === -1) {
+                // Not a valid selection; select the default format instead
+                ioFormatSelect.selectedIndex = 0;
+            }
+        }
+    }
+}
+
+function generateQueryString() {
+    var sourceCode = document.getElementById('source'),
+        inputs = document.getElementById('inputs'),
+        ioFormatSelect = document.getElementById('io-format');
+    var params = [
+        ["p", urlEncode(sourceCode.value.replaceAll(/[^ -~\n]/g, "."))],
+        ["i", urlEncode(inputs.value)],
+        ["f", ioFormatSelect.selectedIndex]
+    ].filter(([key, value]) => value).map(pair => pair.join("="));
+    return "?" + params.join("&");
+}
+
+function generatePermalink() {
+    return location.origin + location.pathname + generateQueryString();
+}
+
 function showEditor() {
     var editor = document.getElementById('editor'),
         interpreter = document.getElementById('interpreter'),
         startEdit = document.getElementById('start-edit'),
+        permalink = document.getElementById('permalink'),
         executionControls = document.getElementById('execution-controls'),
         sourceCode = document.getElementById('source');
     
@@ -650,6 +711,7 @@ function showEditor() {
     interpreter.style.display = "none";
     startEdit.value = "Execute";
     
+    permalink.style.display = "inline-block";
     executionControls.style.display = "none";
     
     sourceCode.focus();
@@ -659,12 +721,14 @@ function hideEditor() {
     var editor = document.getElementById('editor'),
         interpreter = document.getElementById('interpreter'),
         startEdit = document.getElementById('start-edit'),
+        permalink = document.getElementById('permalink'),
         executionControls = document.getElementById('execution-controls');
     
     editor.style.display = "none";
     interpreter.style.display = "block";
     startEdit.value = "Edit";
     
+    permalink.style.display = "none";
     executionControls.style.display = "block";
 }
 
@@ -772,12 +836,29 @@ function haltRestartBtnClick() {
     }
 }
 
+function permalinkBtnClick() {
+    var permalink = generatePermalink();
+    // Copy the permalink to the clipboard, and then (whether the copy succeeded or not)
+    // go to the permalink URL
+    navigator.clipboard.writeText(permalink).then(
+        () => location.assign(permalink),
+        () => location.assign(permalink)
+    );
+}
+
 function canvasClick() {
     // TBD
     //unloadProgram();
 }
 
-var program = null;
-var canvas = document.getElementById("playfield");
-var context = null;
-showEditor();
+var canvas;
+var context;
+var program;
+
+window.onload = function() {
+    canvas = document.getElementById("playfield");
+    context = null;
+    program = null;
+    loadFromQueryString();
+    showEditor();
+}

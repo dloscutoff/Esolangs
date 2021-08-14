@@ -2,7 +2,7 @@
 <head>
 <title>BitCycle interpreter</title>
 <!--
-Designed and written 2017, 2020 by D. Loscutoff
+Designed and written 2017, 2020-21 by D. Loscutoff
 -->
 <link rel="stylesheet" type="text/css" href="bitcycle.css">
 </head>
@@ -10,7 +10,8 @@ Designed and written 2017, 2020 by D. Loscutoff
 <body>
 <h1><a href="https://github.com/dloscutoff/Esolangs/tree/master/BitCycle" target="_blank"><span class="blue">Bit</span><span class="green">Cycle</span></a></h1>
 <div id="main-controls" class="container">
-    <input type="button" id="start-edit" class="control so-box" value="Start/Edit" onclick="startEditBtnClick()" />
+    <input type="button" id="start-edit" class="control float-left so-box" value="Start/Edit" onclick="startEditBtnClick()" />
+    <input type="button" id="permalink" class="control float-right so-box" value="Permalink" onclick="permalinkBtnClick()" />
 </div>
 <div id="editor">
     <div id="source-container" class="container">
@@ -39,13 +40,13 @@ Designed and written 2017, 2020 by D. Loscutoff
 </div>
 <div id="execution-controls">
     <div id="execution-buttons" class="container">
-        <input type="button" id="run-pause" class="control so-box" value="Run/Pause" onclick="runPauseBtnClick()" />
-        <input type="button" id="step" class="control so-box" value="Step" onclick="stepBtnClick()" />
-        <span id="done" class="control so-box">Done.</span>
-        <input type="button" id="halt-restart" class="control so-box" value="Halt/Restart" onclick="haltRestartBtnClick()" />
+        <input type="button" id="run-pause" class="control float-left so-box" value="Run/Pause" onclick="runPauseBtnClick()" />
+        <input type="button" id="step" class="control float-left so-box" value="Step" onclick="stepBtnClick()" />
+        <span id="done" class="control float-left so-box">Done.</span>
+        <input type="button" id="halt-restart" class="control float-left so-box" value="Halt/Restart" onclick="haltRestartBtnClick()" />
     </div>
     <div id="execution-options" class="container">
-        <div class="option so-box">Ticks per second: <span id="ticks-per-second" contenteditable>10</span>
+        <div class="option float-left so-box">Ticks per second: <span id="ticks-per-second" contenteditable>10</span>
         </div>
     </div>
 </div>
