@@ -46,7 +46,7 @@ function isMultiline(code) {
     // parentheses inferred only at the end. If any line in the code
     // contains more closing parens than opening parens, the code is
     // assumed to be in multiline form; otherwise, it's single-line
-    return code.split("\n").some(line => line.split("(").length > line.split("(").length);
+    return code.split("\n").some(line => line.split(")").length > line.split("(").length);
 }
 
 function formatSection(code, bracketId) {
