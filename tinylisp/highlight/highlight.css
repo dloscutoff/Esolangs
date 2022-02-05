@@ -1,0 +1,74 @@
+
+h1 {
+    text-align: center;
+}
+
+.panel {
+    vertical-align: top;
+    height: auto;
+    box-sizing: border-box;
+    margin: -1px;
+    margin-bottom: 6px;
+    padding: 2px;
+}
+
+.one-column > .panel {
+    width: 100%;
+    display: block;
+}
+
+.two-column > .panel {
+    width: 50%;
+    display: inline-block;
+}
+
+.code {
+    width: 100%;
+    overflow-y: hidden;
+    white-space: pre;
+    box-sizing: border-box;
+    padding: 2px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: black;
+    font-family: DejaVu Sans Mono, Courier New, monospace;
+    font-size: 16px;
+}
+
+textarea.code {
+    overflow-x: hidden;
+    min-height: 0px;
+    resize: none;
+}
+
+div.code {
+    overflow-x: auto;
+}
+
+span:hover {
+    background-color: #ddd;
+}
+
+.builtin {
+    color: #907;
+    font-weight: bold;
+}
+
+.alias {
+    color: #b1b;
+    font-weight: bold;
+}
+
+.lib-fn {
+    color: #45f;
+    font-weight: bold;
+}
+
+.name {
+    color: #000;
+    font-weight: bold;
+}
+
+.number {
+    color: #f90;
+}
