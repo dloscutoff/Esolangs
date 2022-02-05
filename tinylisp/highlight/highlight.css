@@ -31,7 +31,7 @@ h1 {
     border-width: 1px;
     border-style: solid;
     border-color: black;
-    font-family: DejaVu Sans Mono, Courier New, monospace;
+    font-family: Consolas, Courier New, monospace;
     font-size: 16px;
 }
 
@@ -45,8 +45,16 @@ div.code {
     overflow-x: auto;
 }
 
-span:hover {
-    background-color: #ddd;
+div.bracket-contents {
+    display: inline;
+}
+
+.primary-highlight, span:hover {
+    background-color: #ccc;
+}
+
+.secondary-highlight {
+    background-color: #eee;
 }
 
 .builtin {
@@ -71,4 +79,14 @@ span:hover {
 
 .number {
     color: #f90;
+}
+
+.implied {
+    color: #999;
+}
+
+.unmatched-bracket, .unmatched-bracket:hover {
+    color: #fec;
+    background-color: #d22;
+    font-weight: bold;
 }
