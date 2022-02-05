@@ -45,6 +45,10 @@ div.code {
     overflow-x: auto;
 }
 
+div.bracket-contents {
+    display: inline;
+}
+
 span:hover {
     background-color: #ddd;
 }
@@ -71,4 +75,14 @@ span:hover {
 
 .number {
     color: #f90;
+}
+
+.implied {
+    color: #999;
+}
+
+.unmatched-bracket, .unmatched-bracket:hover {
+    color: #fec;
+    background-color: #d22;
+    font-weight: bold;
 }

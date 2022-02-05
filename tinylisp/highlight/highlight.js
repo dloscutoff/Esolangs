@@ -4,7 +4,7 @@ window.onload = function() {
     rawCode.oninput = function() {
         var formattedCode = document.getElementById("formatted-code");
         // Highlight the raw code and put into formattedCode
-        formattedCode.innerHTML = highlight(this.value);
+        formattedCode.innerHTML = highlightProgram(this.value);
         // If the raw code ends with a blank line, we have to add an
         // extra newline at the end of formattedCode to get the last
         // blank line to show up
@@ -19,12 +19,82 @@ window.onload = function() {
     rawCode.focus();
 }
 
+function highlightProgram(code) {
+    if (isMultiline(code)) {
+        // In multiline mode, treat the whole program as a single unit
+        // (only infer parentheses at the end)
+        return highlight(code);
+    } else {
+        // In single-line mode, treat each line as a single unit
+        // (infer parentheses at the end of each line)
+        return code.split("\n").map(highlight).join("\n");
+    }
+}
+
+function isMultiline(code) {
+    // Determine whether the code is in single-line or multiline form:
+    // In single-line form, the code is parsed one line at a time
+    // with closing parentheses inferred at the end of each line.
+    // In multiline form, the code is parsed as a whole, with closing
+    // parentheses inferred only at the end. If any line in the code
+    // contains more closing parens than opening parens, the code is
+    // assumed to be in multiline form; otherwise, it's single-line
+    return code.split("\n").some(line => [...line.matchAll(/\)/g)].length > [...line.matchAll(/\(/g)].length);
+}
+
 function highlight(code) {
-    return tokenize(code).map(highlightToken).join("");
+    var tokens = tokenize(code);
+    var highlightedCode = "";
+    while (tokens.length > 0) {
+        highlightedCode += parseExpr(tokens, 0)[0];
+    }
+    return highlightedCode;
 }
 
 function tokenize(code) {
     return [...code.matchAll(/[()]|\s|[^()\s]+/g)].map(m => m[0]);
+}
+
+function parseExpr(tokens, parenIndex) {
+    var formattedExpr = "";
+    if (tokens.length > 0) {
+        var token = tokens.shift();
+        if (token === "(") {
+            // Parse the whole parenthesized expression recursively
+            var currentParenIndex = parenIndex;
+            formattedExpr += highlightParen(token, currentParenIndex);
+            formattedExpr += `<div id="grp-${currentParenIndex}" class="bracket-contents">`;
+            parenIndex++;
+            while (tokens.length > 0 && tokens[0] !== ")") {
+                var subexpr;
+                [subexpr, parenIndex] = parseExpr(tokens, parenIndex);
+                formattedExpr += subexpr;
+            }
+            formattedExpr += `</div>`;
+            if (tokens.length > 0) {
+                formattedExpr += highlightParen(tokens.shift(), currentParenIndex);
+            } else {
+                formattedExpr += highlightParen(")", currentParenIndex, true);
+            }
+        } else if (token === ")") {
+            // If execution ever gets here, we've got an unmatched close-paren
+            formattedExpr = `<span class="unmatched-bracket" title="Unmatched parenthesis">${token}</span>`;
+        } else {
+            // Any token that's not a parenthesis is an atom
+            formattedExpr = highlightToken(token);
+        }
+    }
+    return [formattedExpr, parenIndex];
+}
+
+function highlightParen(paren, parenIndex, isImplied) {
+    var mouseover = "";
+    var cssClass = "bracket";
+    if (isImplied) {
+        cssClass += " implied";
+        mouseover = `title="Implied parenthesis"`;
+    }
+    return `<span id="${paren}-${parenIndex}" class="${cssClass}" ${mouseover}>${paren}</span>`;
 }
 
 function highlightToken(token) {
