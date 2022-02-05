@@ -31,7 +31,7 @@ h1 {
     border-width: 1px;
     border-style: solid;
     border-color: black;
-    font-family: DejaVu Sans Mono, Courier New, monospace;
+    font-family: Consolas, Courier New, monospace;
     font-size: 16px;
 }
 
@@ -49,8 +49,12 @@ div.bracket-contents {
     display: inline;
 }
 
-span:hover {
-    background-color: #ddd;
+.primary-highlight, span:hover {
+    background-color: #ccc;
+}
+
+.secondary-highlight {
+    background-color: #eee;
 }
 
 .builtin {
