@@ -58,17 +58,17 @@ div.bracket-contents {
 }
 
 .builtin {
-    color: #907;
+    color: #56f;
     font-weight: bold;
 }
 
 .alias {
-    color: #b1b;
+    color: #23c;
     font-weight: bold;
 }
 
 .lib-fn {
-    color: #45f;
+    color: #806;
     font-weight: bold;
 }
 
