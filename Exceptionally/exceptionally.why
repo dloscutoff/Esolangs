@@ -1,0 +1,175 @@
+
+import re
+import sys
+
+
+VERSION = "0.5.0"
+
+
+BINARY = {
+    "+": "add",
+    "-": "sub",
+    "*": "mul",
+    "/": "div",
+    "%": "mod",
+    "^": "pow",
+    ",": "fromto",
+    ":": "item",
+    "[": "slicefrom",
+    "]": "sliceto",
+    "@": "find",
+    "#": "count",
+    "|": "split",
+    "$": "join",
+    "&": "pair",
+    "~": "append",
+    }
+
+COMPARISON = {
+    "=": "equal",
+    "<": "less",
+    ">": "greater",
+    }
+
+UNARY = {
+    "A": "asc",
+    "C": "chr",
+    "D": "down",
+    "E": "elems",
+    "F": "flip",
+    "G": "get",
+    "I": "int",
+    "L": "len",
+    "O": "order",
+    "R": "rangeto",
+    "S": "str",
+    "U": "up",
+    "V": "eval",
+    "W": "wrap",
+    }
+
+FUNCS = {
+    "add": lambda x, y: x + y,
+    "sub": lambda x, y: x - y,
+    "mul": lambda x, y: x * y,
+    "div": lambda x, y: x / y,
+    "mod": lambda x, y: x % y,
+    "fromto": lambda x, y: list(range(x, y)),
+    "item": lambda x, y: x[y],
+    "slicefrom": lambda x, y: x[y:],
+    "sliceto": lambda x, y: x[:y],
+    "find": lambda x, y: x.index(y),
+    "count": lambda x, y: x.count(y),
+    "split": lambda x, y: x.split(y),
+    "join": lambda x, y: y.join(x),
+    "pair": lambda x, y: [x, y],
+    "append": lambda x, y: x + [y],
+    "equal": lambda x, y: x == y,
+    "less": lambda x, y: x < y,
+    "greater": lambda x, y: x > y,
+    "asc": ord,
+    "down": lambda x: x - 1 ? x.lower(),
+    "elems": list,
+    "flip": lambda x: x[::-1] ? -x,
+    "get": lambda x: input(),
+    "put": lambda x: print(x) or x,
+    "order": lambda x: "".join(sorted(x)) if isinstance(x, str) else sorted(x),
+    "rangeto": list[range],
+    "up": lambda x: x + 1 ? x.upper(),
+    "wrap": lambda x: [x]
+    }
+
+
+def transpile(code):
+    transpiled_lines = []
+    code = code.lstrip()
+    if code.startswith("?") or code.startswith(";"):
+        raise SyntaxError(f"Program cannot begin with {code[0]}")
+    while code:
+        if m := re.match("'.*", code):
+            code = code[m.end():].lstrip()
+            continue
+        if code[0] in "?;":
+            # Continuing a previous line
+            operator = code[0]
+            code = code[1:].lstrip()
+            if not code:
+                raise SyntaxError(f"Program cannot end with {operator}")
+            why_operator = "+" if operator == ";" else operator
+            transpiled_lines[-1] += f" {why_operator} "
+        else:
+            # Start of a new line
+            transpiled_lines.append("")
+        command = code[0]
+        if command in BINARY:
+            template = "reg := %s(reg, {arg})" % BINARY[command]
+        elif command in COMPARISON:
+            template = "1 / %s(reg, {arg})" % COMPARISON[command]
+        elif command in UNARY:
+            template = "{arg} := %s({arg})" % UNARY[command]
+        elif command == "P":
+            template = "print({arg})"
+        elif command == "{":
+            template = "reg := {arg}"
+        elif command == "}":
+            template = "{arg} := reg"
+        elif command == "!":
+            template = "ip := ip + {arg}"
+        else:
+            raise SyntaxError(f"Expected command, found: {code[0]}")
+        code = code[1:].lstrip()
+        # Parse the command's argument
+        if m := re.match(r"_?(?:\d*\.)?\d+", code):
+            # Integer or float literal
+            argument = m.group()
+            # Underscore indicates a negative number
+            if argument.startswith("_"):
+                argument = "(" + argument.replace("_", "-") + ")"
+        elif m := re.match(r"[a-z]+", code):
+            # Name
+            argument = m.group()
+        elif m := re.match(r'"[^"\\]*"', code):
+            # String literal
+            argument = m.group()
+        else:
+            # No argument, defaults to register
+            argument = "reg"
+        if m:
+            # If any token was matched, skip that many characters
+            code = code[m.end():].lstrip()
+        translation = f"({template.format(arg=argument)},)"
+        transpiled_lines[-1] += translation
+    return transpiled_lines
+
+
+def run(code, quiet=False):
+    program = transpile(code)
+    try:
+        exec("while True: eval(LINES[ip]); ip = (ip + 1) % len(LINES)",
+             FUNCS,
+             {"LINES": program,
+              "ip": 0,
+              "reg": 0
+              })
+    except:
+        if not quiet:
+            raise
+
+
+if __name__ == "__main__":
+    arguments = sys.argv[1:]
+    if arguments and arguments[0] in ("-V", "--version"):
+        print(f"Exceptionally {VERSION}")
+        sys.exit(0)
+    if arguments and arguments[0] in ("-q", "--quiet"):
+        quiet = True
+        arguments.pop(0)
+    else:
+        quiet = False
+    if arguments:
+        filename = arguments[0]
+        with open(filename) as f:
+            code = f.read()
+    else:
+        code = sys.stdin.read()
+    run(code, quiet)

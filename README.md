@@ -19,6 +19,13 @@ A 2D language that involves moving bits around a playfield: picture a cross betw
 | [Try It Online](https://tio.run/#bitcycle)
 | [JavaScript intepreter](https://dloscutoff.github.io/Esolangs/BitCycle)
 
+### Exceptionally
+
+A language that uses exceptions for control flow, inspired by the `?` operator from [Whython](https://www.pxeger.com/2021-09-19-hacking-on-cpython/).
+
+[Github](https://github.com/dloscutoff/Esolangs/tree/master/Exceptionally)
+| [Origins](https://codegolf.stackexchange.com/a/242066/16766)
+
 ### Ouroboros
 
 Each line of code is a loop, which can be shortened or lengthened to achieve control flow.
@@ -32,7 +39,8 @@ Each line of code is a loop, which can be shortened or lengthened to achieve con
 
 Generate strings using regular expression syntax.
 
-[Github](https://github.com/dloscutoff/Esolangs/tree/master/Regenerate) | [Replit](https://replit.com/@dloscutoff/regenerate)
+[Github](https://github.com/dloscutoff/Esolangs/tree/master/Regenerate)
+| [Replit](https://replit.com/@dloscutoff/regenerate)
 
 ### Sisi
 
