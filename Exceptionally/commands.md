@@ -18,7 +18,7 @@ Command | Name      | Description
 `]`     | sliceto   | Gets a slice of a string/list ending just before the given index
 `@`     | find      | Finds the first index at which an item/substring appears
 `#`     | count     | Counts the number of occurrences of an item/substring
-`|`     | split     | Splits a string on occurrences of a substring
+`\|`    | split     | Splits a string on occurrences of a substring
 `$`     | join      | Joins a string/list of strings on a given string
 `&`     | pair      | Wraps two values in a two-item list
 `~`     | append    | Appends a value to the right end of a list
