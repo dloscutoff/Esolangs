@@ -216,3 +216,21 @@
         1
         (any (tail ls)))
       0)))
+
+(def concat-append (lambda (lhs rhs)
+  (if (type? rhs List) 
+    (concat lhs rhs)
+    (insert-end rhs lhs))))
+
+(def _shallow-flat (lambda (lhs accum)
+  (if lhs
+    (_shallow-flat (t lhs) (concat-append accum (h lhs)))
+    accum)))
+
+(def shallow-flat (lambda (lhs)
+  (_shallow-flat lhs ())))
+
+(def deep-flat (lambda (lhs)
+  (if (any (map (lambda (x) (type? x List)) lhs))
+    (deep-flat (shallow-flat lhs))
+    lhs)))
