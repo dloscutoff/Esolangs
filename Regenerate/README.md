@@ -129,6 +129,32 @@ A backreference that starts with `#` instead of `$` gives the length of the back
     | Hello, world! |
     +---------------+
 
+### Short-circuiting alternation
+
+The `!` operator is similar to `|`, but it matches at most one of its alternatives. The difference only becomes apparent when multiple matches are requested.
+
+    > python3 regenerate.py -a -r '$1|x{1,2}'
+    x
+    xx
+    > python3 regenerate.py -a -r '$1!x{1,2}'
+    x
+    xx
+
+Here, `|` and `!` behave identically. In both cases, the first alternative (a backreference to a nonexistent group) fails, and the alternation operator tries the second alternative instead.
+
+    > python3 regenerate.py -a -r 'x{1,2}|y{1,2}'
+    x
+    xx
+    y
+    yy
+    > python3 regenerate.py -a -r 'x{1,2}!y{1,2}'
+    x
+    xx
+
+When the first alternative succeeds, `|` goes on to try the second alternative, but `!` stops and does not try the second alternative. (This behavior is inspired by the "cut" from Prolog, which also uses the `!` character.)
+
+Since they are both types of alternation, `|` and `!` have the same precedence and are left-associative: `a!b|c` parses as `a!(b|c)`, and `a|b!c` parses as `a|(b!c)`.
+
 ## Example programs
 
 [Hello, world](https://esolangs.org/wiki/Hello,_world!):
