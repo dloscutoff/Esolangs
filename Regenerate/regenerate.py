@@ -322,7 +322,7 @@ def resolve_backreference(expression, match_state):
 
 def match(regex, match_state):
     if regex is None:
-        yield match_state
+        yield match_state.copy()
 ##    elif regex == "~":
 ##        # TODO: Reverse direction
 ##        new_state = match_state.copy()
@@ -354,16 +354,13 @@ def match(regex, match_state):
     elif regex[0] == "|":
         # Alternation
         for subexpression in regex[1:]:
-            for new_state in match(subexpression,
-                                   match_state):
-                yield new_state
+            yield from match(subexpression, match_state)
     elif regex[0] == "!":
         # Like alternation, but stop trying other options as soon as
         # we find one that works
         found_match = False
         for subexpression in regex[1:]:
-            for new_state in match(subexpression,
-                                   match_state):
+            for new_state in match(subexpression, match_state):
                 yield new_state
                 found_match = True
             if found_match:
@@ -372,17 +369,14 @@ def match(regex, match_state):
         # Concatenation; match one at a time, recursively
         if not regex[1:]:
             # Base case: nothing left to match
-            yield match_state
+            yield match_state.copy()
         else:
             # Recursive case: match the first item in the alternation,
             # and then match the rest
             first_part = regex[1]
             rest = [""] + regex[2:]
-            for first_part_match in match(first_part,
-                                          match_state):
-                for rest_match in match(rest,
-                                        first_part_match):
-                    yield rest_match
+            for new_state in match(first_part, match_state):
+                yield from match(rest, new_state)
     elif isinstance(regex[0], list):
         # Repetition
         lower_bound, upper_bound = (eval_numeric(expr, match_state)
@@ -399,20 +393,16 @@ def match(regex, match_state):
         subexpression = regex[1]
         for reps in range_from_to(lower_bound, upper_bound):
             if reps == 0:
-                yield match_state
+                yield match_state.copy()
             else:
-                for first_match in match(subexpression,
-                                         match_state):
+                for new_state in match(subexpression, match_state):
                     rest = [[reps - 1, reps - 1], subexpression]
-                    for rest_match in match(rest,
-                                            first_match):
-                        yield rest_match
+                    yield from match(rest, new_state)
     elif regex[0] == "(":
         # Capture group
         group_num, subexpression = regex[1:]
         start_index = match_state.pos
-        for new_state in match(subexpression,
-                               match_state):
+        for new_state in match(subexpression, match_state):
             end_index = new_state.pos
             matched_string = new_state.string[start_index:end_index]
             new_state.groups[group_num] = matched_string
@@ -448,11 +438,11 @@ def main(regex, inputs=None, result_limit=1, match_sep="\n",
         print(verbose_separator)
     for i, match_result in enumerate(match(parsed_regex,
                                      MatchState(inputs=inputs))):
+        if i >= result_limit:
+            break
         if i > 0:
             print(match_sep, end="")
         print(match_result, end="")
-        if i + 1 >= result_limit:
-            break
     if trailing_newline:
         print()
 
