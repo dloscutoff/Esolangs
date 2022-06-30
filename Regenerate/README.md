@@ -112,8 +112,10 @@ This feature is particularly useful for taking numbers as program inputs:
 
 Curly braces can evaluate simple arithmetic expressions:
 
-    > python3 regenerate.py -r 'a{3*$~1+1}' 3
-    aaaaaaaaaa
+    > python3 regenerate.py -r 'a{3*$~1+1}' 2
+    aaaaaaa
+    > python3 regenerate.py -r 'a{3*($~1+1)}' 2
+    aaaaaaaaa
 
 Use `${...}` to match the result of an arithmetic expression as a string rather than using it as a repetition count:
 

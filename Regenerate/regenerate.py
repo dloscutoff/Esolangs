@@ -184,6 +184,13 @@ def parse_atomic_expr(tokens):
         return number
     elif isbackreference(next_token):
         return tokens.pop()
+    elif next_token == "(":
+        tokens.pop()
+        expression = parse_numeric_expr(tokens)
+        next_token = tokens.pop()
+        if next_token != ")":
+            raise ValueError(f"missing closing parenthesis, got {next_token}")
+        return expression
     elif next_token in [",", "}"]:
         return ""
     else:
