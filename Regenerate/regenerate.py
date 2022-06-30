@@ -58,7 +58,7 @@ def parse_alternation(tokens):
     return branches if branches else subexpression
 
 def parse_concatenation(tokens):
-    branches = [""]
+    branches = ["cat"]
     subexpression = parse_repetition(tokens)
     while subexpression is not None:
         branches.append(subexpression)
@@ -75,20 +75,23 @@ def parse_repetition(tokens):
     while tokens.peek() in ["*", "+", "?", "{"]:
         repetition_operator = tokens.pop()
         if repetition_operator == "*":
-            bounds = ["0", ""]
+            bounds = ("0", "")
         elif repetition_operator == "+":
-            bounds = ["1", ""]
+            bounds = ("1", "")
         elif repetition_operator == "?":
-            bounds = ["0", "1"]
+            bounds = ("0", "1")
         elif repetition_operator == "{":
             lower_bound = parse_numeric_expr(tokens)
             if tokens.peek() == ",":
                 tokens.pop()
                 upper_bound = parse_numeric_expr(tokens)
+                bounds = (lower_bound, upper_bound)
             else:
-                upper_bound = lower_bound
-            tokens.pop()
-            bounds = [lower_bound, upper_bound]
+                bounds = (lower_bound,)
+            next_token = tokens.pop()
+            if next_token != "}":
+                raise ValueError("missing closing curly brace, "
+                                 f"got {next_token}")
         expression = [bounds, expression]
     return expression
 
@@ -100,12 +103,12 @@ def parse_atom(tokens):
         group_num = tokens.next_group_num()
         subexpression = parse(tokens)
         tokens.pop()
-        return ["(", group_num, subexpression]
+        return ["grp", group_num, subexpression]
     elif tokens.peek() == "${":
         tokens.pop()
         numeric_expression = parse_numeric_expr(tokens)
         tokens.pop()
-        return ["${", numeric_expression]
+        return ["expr", numeric_expression]
     elif tokens.peek() not in "(){}|!+*?":
         return tokens.pop()
     else:
@@ -372,25 +375,30 @@ def match(regex, match_state):
                 found_match = True
             if found_match:
                 break
-    elif regex[0] == "":
+    elif regex[0] == "cat":
         # Concatenation; match one at a time, recursively
         if not regex[1:]:
             # Base case: nothing left to match
             yield match_state.copy()
         else:
-            # Recursive case: match the first item in the alternation,
+            # Recursive case: match the first item in the concatenation,
             # and then match the rest
             first_part = regex[1]
-            rest = [""] + regex[2:]
+            rest = ["cat"] + regex[2:]
             for new_state in match(first_part, match_state):
                 yield from match(rest, new_state)
-    elif isinstance(regex[0], list):
+    elif isinstance(regex[0], tuple):
         # Repetition
-        lower_bound, upper_bound = (eval_numeric(expr, match_state)
-                                    for expr in regex[0])
-        if regex[0][1] == "":
-            # An empty upper bound represents infinity
-            upper_bound = INFINITY
+        bounds = [eval_numeric(expr, match_state) for expr in regex[0]]
+        if len(bounds) == 1:
+            # Constant number of repetitions
+            lower_bound, = upper_bound, = bounds
+        else:
+            # Distinct lower and upper bounds
+            lower_bound, upper_bound = bounds
+            if regex[0][1] == "":
+                # An empty upper bound represents infinity
+                upper_bound = INFINITY
         if lower_bound is None or upper_bound is None:
             # One of the bounds contained a backreference that failed
             # or a division by 0
@@ -403,9 +411,9 @@ def match(regex, match_state):
                 yield match_state.copy()
             else:
                 for new_state in match(subexpression, match_state):
-                    rest = [[reps - 1, reps - 1], subexpression]
+                    rest = [(reps - 1,), subexpression]
                     yield from match(rest, new_state)
-    elif regex[0] == "(":
+    elif regex[0] == "grp":
         # Capture group
         group_num, subexpression = regex[1:]
         start_index = match_state.pos
@@ -414,12 +422,15 @@ def match(regex, match_state):
             matched_string = new_state.string[start_index:end_index]
             new_state.groups[group_num] = matched_string
             yield new_state
-    elif regex[0] == "${":
+    elif regex[0] == "expr":
+        # Numeric expression to be matched literally
         value = eval_numeric(regex[1], match_state)
         if value is not None:
             new_state = match_literal_string(str(value), match_state)
             if new_state is not None:
                 yield new_state
+    else:
+        raise ValueError(f"Unrecognized parse tree element: {regex[0]!r}")
 
 
 def main(regex, inputs=None, result_limit=1, match_sep="\n",
