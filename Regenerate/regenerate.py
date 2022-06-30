@@ -8,16 +8,6 @@ import pprint
 ASCII_CHARS = list(map(chr, range(32, 127)))
 INFINITY = float("inf")
 
-def range_from_to(lower_bound, upper_bound):
-    """Generates an inclusive range from lower to upper bound.
-
-    An upper bound of infinity is also supported.
-    """
-    i = int(lower_bound)
-    while i <= upper_bound:
-        yield i
-        i += 1
-
 def isbackreference(string):
     return re.fullmatch(r".~?\d+", string) is not None
 
@@ -200,10 +190,36 @@ def parse_atomic_expr(tokens):
         raise ValueError(f"expected arithmetic expression, got {next_token}")
 
 
+def contains_infinite_quantifier(regex):
+    if type(regex) is not list:
+        return False
+    elif regex[0] in ["|", "!", "cat"]:
+        # Test if any of the subexpressions contain infinite quantifiers
+        return any(map(contains_infinite_quantifier, regex[1:]))
+    elif regex[0] == "grp":
+        # Test if the group contents contain infinite quantifiers
+        return contains_infinite_quantifier(regex[2])
+    elif isinstance(regex[0], tuple):
+        # Test if the repetition is unbounded above
+        if len(regex[0]) == 2 and regex[0][1] == "":
+            # An empty upper bound represents infinity
+            return True
+        else:
+            # A nonempty upper bound is finite; test if the subexpression
+            # contains infinite quantifiers
+            return contains_infinite_quantifier(regex[1])
+    else:
+        # Anything else is not a quantifier and cannot have nested
+        # expressions
+        return False
+
+
 class MatchState:
     def __init__(self, string="", pos=0, direc=1, offset=0,
-                 extend_forward=True, extend_back=True, inputs=None):
+                 extend_forward=True, extend_back=True, inputs=None,
+                 rep_limit=0):
         self.string = str(string)
+        self.rep_limit = rep_limit
         try:
             self.pos = int(pos)
         except (TypeError, ValueError):
@@ -230,7 +246,8 @@ class MatchState:
     def copy(self):
         new_state = MatchState(self.string, self.pos, self.direc,
                                self.offset, self.extend_back,
-                               self.extend_forward, self.inputs)
+                               self.extend_forward, self.inputs,
+                               self.rep_limit)
         new_state.groups = self.groups.copy()
         return new_state
 
@@ -264,7 +281,7 @@ def match_literal_string(string, match_state):
 
 def eval_numeric(expression, match_state):
     "Evaluates the expression and returns a number."
-    if isinstance(expression, int):
+    if isinstance(expression, (int, float)):
         result = expression
     elif isinstance(expression, list):
         operator, *operands = expression
@@ -406,13 +423,29 @@ def match(regex, match_state):
         if lower_bound < 0:
             lower_bound = 0
         subexpression = regex[1]
-        for reps in range_from_to(lower_bound, upper_bound):
-            if reps == 0:
-                yield match_state.copy()
+        if lower_bound > 0:
+            # Match at least once
+            rest = [(lower_bound - 1, upper_bound - 1), subexpression]
+            for new_state in match(subexpression, match_state):
+                yield from match(rest, new_state)
+        else:
+            if upper_bound == INFINITY:
+                # Infinite quantifiers can continue only until the
+                # current repetition limit
+                actual_upper_bound = match_state.rep_limit
             else:
-                for new_state in match(subexpression, match_state):
-                    rest = [(reps - 1,), subexpression]
-                    yield from match(rest, new_state)
+                # Finite quantifiers can continue until their upper bound
+                actual_upper_bound = upper_bound
+            for reps in range(actual_upper_bound + 1):
+                if reps == 0:
+                    yield match_state.copy()
+                else:
+                    for new_state in match(subexpression, match_state):
+                        rest = [(reps - 1,), subexpression]
+                        if upper_bound == INFINITY:
+                            # Infinite quantifiers use up repetition limit
+                            new_state.rep_limit -= reps
+                        yield from match(rest, new_state)
     elif regex[0] == "grp":
         # Capture group
         group_num, subexpression = regex[1:]
@@ -431,6 +464,21 @@ def match(regex, match_state):
                 yield new_state
     else:
         raise ValueError(f"Unrecognized parse tree element: {regex[0]!r}")
+
+def all_matches(regex, inputs):
+    if contains_infinite_quantifier(regex):
+        rep_limit = 0
+        while True:
+            initial_state = MatchState(inputs=inputs, rep_limit=rep_limit)
+            for match_result in match(regex, initial_state):
+                if match_result.rep_limit == 0:
+                    # Only yield match results that used up the whole
+                    # quota of repetitions
+                    yield match_result
+            rep_limit += 1
+    else:
+        # Without an infinite quantifier, just yield all results
+        yield from match(regex, MatchState(inputs=inputs))
 
 
 def main(regex, inputs=None, result_limit=1, match_sep="\n",
@@ -454,8 +502,7 @@ def main(regex, inputs=None, result_limit=1, match_sep="\n",
         print("Parse tree:")
         pprint.pprint(parsed_regex)
         print(verbose_separator)
-    for i, match_result in enumerate(match(parsed_regex,
-                                     MatchState(inputs=inputs))):
+    for i, match_result in enumerate(all_matches(parsed_regex, inputs)):
         if i >= result_limit:
             break
         if i > 0:
