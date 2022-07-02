@@ -136,8 +136,9 @@ def parse_character_class(tokens):
         characters.add(prev_character)
     branches = ["|"]
     if not negated:
-        branches.extend(char for char in ASCII_CHARS if char in characters)
+        branches.extend(sorted(characters))
     else:
+        # Negated character classes are ASCII-only
         branches.extend(char for char in ASCII_CHARS if char not in characters)
     return branches
 
