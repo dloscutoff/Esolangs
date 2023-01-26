@@ -538,7 +538,7 @@ class Program:
                 self.global_names[name] = self.tl_eval(value)
                 return name
         else:
-            error("cannot define", tl_type(name))
+            error("cannot define", self.tl_type(name))
             return nil
 
     @macro
