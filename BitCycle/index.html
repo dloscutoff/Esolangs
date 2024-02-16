@@ -50,6 +50,32 @@ Designed and written 2017, 2020-21 by D. Loscutoff
         </div>
     </div>
 </div>
+    
+<div id="cheatsheet">
+      <h2>Cheat Sheet</h2>
+      <p>
+            <code>&lt;</code>, <code>^</code>, <code>&gt;</code>, and
+            <code>v</code> change a bit's direction unconditionally
+      </p>
+      <p><code>+</code> branch, <code>0</code> left; <code>1</code> right.</p>
+      <p><code>/</code>, <code>\</code> deflect first bit</p>
+      <p>
+            <code>=</code> first bit decides direction, <code>0</code> creates
+            <code>{</code>, <code>1</code> creates <code>}</code>
+      </p>
+      <p><code>A</code>-<code>Z</code> (except <code>V</code>) Collectors</p>
+      <p><code>?</code> Source (input)</p>
+      <p><code>!</code> Sink (output)</p>
+      <p>
+            <code>~</code> Dupneg, copy bit, rotate original right, inverted copy
+            goes left
+      </p>
+      <p>
+            <code>0</code>, <code>1</code> Creates a bit at the start of the
+            program, moving right
+      </p>
+      <p><code>@</code> Halt</p>
+</div>
 <script src="bitcycle.js"></script>
 </body>
 </html>
