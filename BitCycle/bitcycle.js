@@ -10,7 +10,7 @@ const ZERO_BIT = 1;
 const ONE_BIT = 2;
 
 const BIT_SHAPE_RADIUS = 7;
-const GRID_SQUARE_SIZE = 16;
+const GRID_SQUARE_SIZE = 24;
 const GRID_FONT_SIZE = 14;
 
 const BLUE = "#ABF";
@@ -603,17 +603,17 @@ function clearCanvas() {
     }
 }
 
-function drawBitsAt(bitCode, x, y) {
+function drawBitsAt(bitCode, x, y, scale=1) {
     if (bitCode > 0) {
         var centerX = (x + 0.5) * GRID_SQUARE_SIZE;
         var centerY = (y + 0.5) * GRID_SQUARE_SIZE;
         if (bitCode === ZERO_BIT) {
-            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS, BLUE);
+            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS * scale, BLUE);
         } else if (bitCode === ONE_BIT) {
-            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS, GREEN);
+            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS * scale, GREEN);
         } else {  // Both a zero and a one bit
-            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS, BLUE);
-            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS, GREEN);
+            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS * scale, BLUE);
+            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS * scale, GREEN);
         }
     }
 }
@@ -640,6 +640,18 @@ function drawDeviceAt(device, x, y) {
     var textY = (y + 0.5) * GRID_SQUARE_SIZE + 0.25 * GRID_FONT_SIZE;
     context.fillStyle = BLACK;
     context.fillText(device.toString(), textX, textY);
+    
+    if (device instanceof Collector) {
+        for (let i = 0; i < Math.min(device.queue.length, 5); i++) {
+            let bit = device.queue[i];
+            drawBitsAt(
+                bit.value + 1,
+                x + (1 / 7 + i / 7) - 0.5,
+                y + 1 / 7 - 0.5,
+                0.25
+            );
+        }
+    }
 }
 
 function urlDecode(value) {
