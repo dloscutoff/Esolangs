@@ -2,7 +2,7 @@
 <head>
 <title>BitCycle interpreter</title>
 <!--
-Designed and written 2017, 2020-21 by D. Loscutoff
+Designed and written 2017, 2020-21, 2024 by D. Loscutoff
 -->
 <link rel="stylesheet" type="text/css" href="bitcycle.css">
 </head>
@@ -50,31 +50,40 @@ Designed and written 2017, 2020-21 by D. Loscutoff
         </div>
     </div>
 </div>
-    
 <div id="cheatsheet">
-      <h2>Cheat Sheet</h2>
-      <p>
-            <code>&lt;</code>, <code>^</code>, <code>&gt;</code>, and
-            <code>v</code> change a bit's direction unconditionally
-      </p>
-      <p><code>+</code> branch, <code>0</code> left; <code>1</code> right.</p>
-      <p><code>/</code>, <code>\</code> deflect first bit</p>
-      <p>
-            <code>=</code> first bit decides direction, <code>0</code> creates
-            <code>{</code>, <code>1</code> creates <code>}</code>
-      </p>
-      <p><code>A</code>-<code>Z</code> (except <code>V</code>) Collectors</p>
-      <p><code>?</code> Source (input)</p>
-      <p><code>!</code> Sink (output)</p>
-      <p>
-            <code>~</code> Dupneg, copy bit, rotate original right, inverted copy
-            goes left
-      </p>
-      <p>
-            <code>0</code>, <code>1</code> Creates a bit at the start of the
-            program, moving right
-      </p>
-      <p><code>@</code> Halt</p>
+    <h2>Cheat Sheet</h2>
+    <p>
+        <code>&lt;</code>, <code>^</code>, <code>&gt;</code>, and <code>v</code>
+        change a bit's direction unconditionally
+    </p>
+    <p>
+        <code>+</code> changes a bit's direction conditionally:
+        <code>0</code> turns left; <code>1</code> turns right
+    </p>
+    <p>
+        <code>/</code> and <code>\</code> (splitters) deflect first bit,
+        pass others straight through
+    </p>
+    <p>
+        <code>=</code> (switch) changes form based on first bit:
+        if <code>0</code>, becomes <code>{</code> and sends following bits west;
+        if <code>1</code>, becomes <code>}</code> and sends following bits east
+    </p>
+    <p>
+        <code>A</code>-<code>U</code> and <code>W</code>-<code>Z</code> (collectors)
+        store bits in a queue when closed and emit them, moving east, when open
+    </p>
+    <p><code>?</code> (source) emits bits from input, moving east</p>
+    <p><code>!</code> (sink) outputs bits</p>
+    <p>
+        <code>~</code> (dupneg) copies a bit;
+        original copy turns right, inverted copy turns left
+    </p>
+    <p>
+        <code>0</code> and <code>1</code> create a bit at the start of the
+        program, moving east
+    </p>
+    <p><code>@</code> halts program</p>
 </div>
 <script src="bitcycle.js"></script>
 </body>
