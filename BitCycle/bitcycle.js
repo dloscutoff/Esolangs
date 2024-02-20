@@ -177,14 +177,14 @@ function Source(x, y, inputString, ioFormat) {
     } else if (ioFormat === "signed") {
         inputString = inputString.split(",").map(intToSignedUnary).join("0");
     }
-    this.queue = inputString.split("");
+    this.queue = inputString.split("").map(value => new Bit(this.x, this.y, EAST, value));
     this.open = (this.queue.length > 0);
 }
 
 Source.prototype.tick = function() {
     var outBit = null;
     if (this.open) {
-        outBit = new Bit(this.x, this.y, EAST, this.queue.shift());
+        outBit = this.queue.shift();
         if (this.queue.length === 0) {
             this.open = false;
         }
@@ -641,11 +641,11 @@ function drawDeviceAt(device, x, y) {
     context.fillStyle = BLACK;
     context.fillText(device.toString(), textX, textY);
     
-    if (device instanceof Collector) {
+    if (device instanceof Collector || device instanceof Source) {
         for (let i = 0; i < Math.min(device.queue.length, 5); i++) {
             let bit = device.queue[i];
             drawBitsAt(
-                bit.value + 1,
+                (bit.value ? ONE_BIT : ZERO_BIT),
                 x + (1 / 7 + i / 7) - 0.5,
                 y + 1 / 7 - 0.5,
                 0.25
