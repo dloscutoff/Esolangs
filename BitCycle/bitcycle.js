@@ -789,6 +789,19 @@ function hideEditor() {
     executionControls.style.display = "block";
 }
 
+function toggleCheatSheet() {
+    var cheatSheet = document.getElementById('cheat-sheet'),
+        indicator = document.getElementById('cheat-sheet-indicator');
+    
+    if (cheatSheet.classList.contains("hide")) {
+        cheatSheet.classList.remove("hide");
+        indicator.innerText = "-";
+    } else {
+        cheatSheet.classList.add("hide");
+        indicator.innerText = "+";
+    }
+}
+
 function loadProgram() {
     var sourceCode = document.getElementById('source'),
         ticksPerSecond = document.getElementById('ticks-per-second'),
