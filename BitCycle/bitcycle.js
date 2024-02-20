@@ -642,11 +642,11 @@ function drawDeviceAt(device, x, y) {
     context.fillText(device.toString(), textX, textY);
     
     if (device instanceof Collector || device instanceof Source) {
-        for (let i = 0; i < Math.min(device.queue.length, 5); i++) {
+        for (let i = 0; i < Math.min(device.queue.length, 6); i++) {
             let bit = device.queue[i];
             drawBitsAt(
                 (bit.value ? ONE_BIT : ZERO_BIT),
-                x + (1 / 7 + i / 7) - 0.5,
+                x - (1 / 7 + i / 7) + 0.5,
                 y + 1 / 7 - 0.5,
                 0.25
             );
