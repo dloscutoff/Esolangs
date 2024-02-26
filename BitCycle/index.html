@@ -2,7 +2,8 @@
 <head>
 <title>BitCycle interpreter</title>
 <!--
-Designed and written 2017, 2020-21 by D. Loscutoff
+Designed and written 2017, 2020-21, 2024 by D. Loscutoff
+With contributions from Mousetail (https://github.com/mousetail)
 -->
 <link rel="stylesheet" type="text/css" href="bitcycle.css">
 </head>
@@ -49,6 +50,41 @@ Designed and written 2017, 2020-21 by D. Loscutoff
         <div class="option float-left so-box">Ticks per second: <span id="ticks-per-second" contenteditable>10</span>
         </div>
     </div>
+</div>
+<h3><a href="#" class="blue" onclick="toggleCheatSheet()">Cheat Sheet <code id="cheat-sheet-indicator">+</code></a></h2>
+<div id="cheat-sheet" class="toggle hide">
+    <p>
+        <code>&lt;</code>, <code>^</code>, <code>&gt;</code>, and <code>v</code>
+        change a bit's direction unconditionally
+    </p>
+    <p>
+        <code>+</code> changes a bit's direction conditionally:
+        <code>0</code> turns left; <code>1</code> turns right
+    </p>
+    <p>
+        <code>/</code> and <code>\</code> (splitters) deflect first bit,
+        pass others straight through
+    </p>
+    <p>
+        <code>=</code> (switch) changes form based on first bit:
+        if <code>0</code>, becomes <code>{</code> and sends following bits west;
+        if <code>1</code>, becomes <code>}</code> and sends following bits east
+    </p>
+    <p>
+        <code>A</code>-<code>U</code> and <code>W</code>-<code>Z</code> (collectors)
+        store bits in a queue when closed and emit them, moving east, when open
+    </p>
+    <p><code>?</code> (source) emits bits from input, moving east</p>
+    <p><code>!</code> (sink) outputs bits</p>
+    <p>
+        <code>~</code> (dupneg) copies a bit;
+        original copy turns right, inverted copy turns left
+    </p>
+    <p>
+        <code>0</code> and <code>1</code> create a bit at the start of the
+        program, moving east
+    </p>
+    <p><code>@</code> halts program</p>
 </div>
 <script src="bitcycle.js"></script>
 </body>

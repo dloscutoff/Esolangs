@@ -112,8 +112,10 @@ This feature is particularly useful for taking numbers as program inputs:
 
 Curly braces can evaluate simple arithmetic expressions:
 
-    > python3 regenerate.py -r 'a{3*$~1+1}' 3
-    aaaaaaaaaa
+    > python3 regenerate.py -r 'a{3*$~1+1}' 2
+    aaaaaaa
+    > python3 regenerate.py -r 'a{3*($~1+1)}' 2
+    aaaaaaaaa
 
 Use `${...}` to match the result of an arithmetic expression as a string rather than using it as a repetition count:
 
@@ -128,6 +130,32 @@ A backreference that starts with `#` instead of `$` gives the length of the back
     +---------------+
     | Hello, world! |
     +---------------+
+
+### Short-circuiting alternation
+
+The `!` operator is similar to `|`, but it matches at most one of its alternatives. The difference only becomes apparent when multiple matches are requested.
+
+    > python3 regenerate.py -a -r '$1|x{1,2}'
+    x
+    xx
+    > python3 regenerate.py -a -r '$1!x{1,2}'
+    x
+    xx
+
+Here, `|` and `!` behave identically. In both cases, the first alternative (a backreference to a nonexistent group) fails, and the alternation operator tries the second alternative instead.
+
+    > python3 regenerate.py -a -r 'x{1,2}|y{1,2}'
+    x
+    xx
+    y
+    yy
+    > python3 regenerate.py -a -r 'x{1,2}!y{1,2}'
+    x
+    xx
+
+When the first alternative succeeds, `|` goes on to try the second alternative, but `!` stops and does not try the second alternative. (This behavior is inspired by the "cut" from Prolog, which also uses the `!` character.)
+
+Since they are both types of alternation, `|` and `!` have the same precedence and are left-associative: `a!b|c` parses as `a!(b|c)`, and `a|b!c` parses as `a|(b!c)`.
 
 ## Example programs
 
