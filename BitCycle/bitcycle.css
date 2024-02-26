@@ -82,3 +82,9 @@ span[contenteditable] {
     background: #888;
     cursor: default;
 }
+
+code {
+    padding: 0.25rem;
+    background-color: #ddd;
+    border-radius: 0.25rem;
+}
