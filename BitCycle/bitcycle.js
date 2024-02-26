@@ -13,6 +13,9 @@ const BIT_SHAPE_RADIUS = 7;
 const GRID_SQUARE_SIZE = 24;
 const GRID_FONT_SIZE = 14;
 
+const DEFAULT_TICKS_PER_SECOND = 10;
+const DEFAULT_FRAMES_PER_TICK = 1;
+
 const BLUE = "#ABF";
 const GREEN = "#6E6";
 const TEAL = "#4A9";
@@ -255,10 +258,12 @@ Device.prototype.toString = function() {
 }
 
 // Define Program class
-function Program(codeLines, inputLines, speed, ioFormat, expand) {
+function Program(codeLines, inputLines, ticksPerSecond, ioFormat, expand) {
     var sinkNumber = 0;
     
-    this.setSpeed(speed);
+    const framesPerTick = DEFAULT_FRAMES_PER_TICK;  // TODO: let user set this
+    this.setSpeed(ticksPerSecond, framesPerTick);
+    this.frame = 0;
     this.done = false;
     this.paused = true;
     
@@ -344,15 +349,31 @@ function Program(codeLines, inputLines, speed, ioFormat, expand) {
     }
 }
 
-Program.prototype.setSpeed = function(speed) {
-    this.speed = +speed || 10;
+Program.prototype.setSpeed = function(ticksPerSecond, framesPerTick) {
+    this.ticksPerSecond = +ticksPerSecond || this.ticksPerSecond || DEFAULT_TICKS_PER_SECOND;
+    this.framesPerTick = +framesPerTick || this.framesPerTick || DEFAULT_FRAMES_PER_TICK;
+    this.speed = this.ticksPerSecond * this.framesPerTick;
 }
 
 Program.prototype.run = function() {
     this.paused = false;
-    this.tick();
+    this.step();
     if (!this.done) {
         this.timeout = window.setTimeout(this.run.bind(this), 1000 / this.speed);
+    }
+}
+
+Program.prototype.step = function() {
+    // Step one frame forward
+    this.frame++;
+    
+    if (this.frame === this.framesPerTick) {
+        // Move the program state forward one tick and display the current
+        // state of the playfield
+        this.tick();
+    } else {
+        // Display the current state of the playfield
+        this.displayPlayfield();
     }
 }
 
@@ -539,7 +560,8 @@ Program.prototype.tick = function() {
     }
     
     // Display the current state of the playfield
-    displaySource(this.grid, this.activeBits);
+    this.frame = 0;
+    this.displayPlayfield();
 }
 
 Program.prototype.reset = function() {
@@ -578,21 +600,26 @@ Program.prototype.halt = function() {
     }
 }
 
-function displaySource(grid, activeBits) {
+Program.prototype.displayPlayfield = function() {
     clearCanvas();
-    // Attach active bits to the devices at those coordinates
-    for (var b = 0; b < activeBits.length; b++) {
-        var bit = activeBits[b];
-        grid[bit.y][bit.x].bitCode |= (bit.value ? ONE_BIT : ZERO_BIT);
+    // Display all zero bits on the playfield first
+    for (var b = 0; b < this.activeBits.length; b++) {
+        if (this.activeBits[b].value === 0) {
+            drawBitOffset(this.activeBits[b], this.frame / this.framesPerTick );
+        }
     }
-    // Display active bits and devices
-    for (var y = 0; y < grid.length; y++) {
-        var row = grid[y];
+    // Then display all one bits on the playfield
+    for (var b = 0; b < this.activeBits.length; b++) {
+        if (this.activeBits[b].value === 1) {
+            drawBitOffset(this.activeBits[b], this.frame / this.framesPerTick );
+        }
+    }
+    // Then display devices
+    for (var y = 0; y < this.grid.length; y++) {
+        var row = this.grid[y];
         for (var x = 0; x < row.length; x++) {
             var device = row[x];
-            drawBitsAt(device.bitCode, x, y);
             drawDeviceAt(device, x, y);
-            device.bitCode = 0;
         }
     }
 }
@@ -601,6 +628,13 @@ function clearCanvas() {
     if (context !== null) {
         context.clearRect(0, 0, canvas.width, canvas.height);
     }
+}
+
+function drawBitOffset(bit, offsetAmount) {
+    var x = bit.x + dx(bit.direction) * offsetAmount;
+    var y = bit.y + dy(bit.direction) * offsetAmount;
+    var bitCode = (bit.value ? ONE_BIT : ZERO_BIT);
+    drawBitsAt(bitCode, x, y);
 }
 
 function drawBitsAt(bitCode, x, y, scale=1) {
@@ -828,7 +862,7 @@ function loadProgram() {
     context.font = "bold " + GRID_FONT_SIZE + "px Courier New";
     
     // Display the current state of the playfield
-    displaySource(program.grid, program.activeBits);
+    program.displayPlayfield();
     
     runPause.style.display = "block";
     step.style.display = "block";
@@ -878,7 +912,7 @@ function runPauseBtnClick() {
     if (program !== null && !program.done) {
         if (program.paused) {
             var ticksPerSecond = document.getElementById('ticks-per-second');
-            program.setSpeed(ticksPerSecond.innerText);  // TBD: is innerText the best way to do this?
+            program.setSpeed(ticksPerSecond.innerText);
             runPause.value = "Pause";
             program.run();
         } else {
@@ -892,7 +926,7 @@ function stepBtnClick() {
     var runPause = document.getElementById('run-pause');
     if (program !== null && !program.done) {
         program.pause();
-        program.tick();
+        program.step();
         runPause.value = "Run";
     }
 }
