@@ -258,10 +258,9 @@ Device.prototype.toString = function() {
 }
 
 // Define Program class
-function Program(codeLines, inputLines, ticksPerSecond, ioFormat, expand) {
+function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat, expand) {
     var sinkNumber = 0;
     
-    const framesPerTick = DEFAULT_FRAMES_PER_TICK;  // TODO: let user set this
     this.setSpeed(ticksPerSecond, framesPerTick);
     this.frame = 0;
     this.done = false;
@@ -350,9 +349,14 @@ function Program(codeLines, inputLines, ticksPerSecond, ioFormat, expand) {
 }
 
 Program.prototype.setSpeed = function(ticksPerSecond, framesPerTick) {
-    this.ticksPerSecond = +ticksPerSecond || this.ticksPerSecond || DEFAULT_TICKS_PER_SECOND;
-    this.framesPerTick = +framesPerTick || this.framesPerTick || DEFAULT_FRAMES_PER_TICK;
-    this.speed = this.ticksPerSecond * this.framesPerTick;
+    // Don't modify the speed directly in case we're in the middle of a step;
+    // instead, set attributes-in-waiting that will be copied over at the
+    // beginning of the next step
+    ticksPerSecond = Math.max(ticksPerSecond, 0);
+    framesPerTick = Math.max(framesPerTick, 0);
+    this._ticksPerSecond = Math.abs(ticksPerSecond) || this.ticksPerSecond || DEFAULT_TICKS_PER_SECOND;
+    this._framesPerTick = Math.abs(framesPerTick) || this.framesPerTick || DEFAULT_FRAMES_PER_TICK;
+    this._speed = this._ticksPerSecond * this._framesPerTick;
 }
 
 Program.prototype.run = function() {
@@ -364,10 +368,15 @@ Program.prototype.run = function() {
 }
 
 Program.prototype.step = function() {
+    // Update the program speed, in case it's been modified since the last step
+    this.ticksPerSecond = this._ticksPerSecond;
+    this.framesPerTick = this._framesPerTick;
+    this.speed = this._speed;
+    
     // Step one frame forward
     this.frame++;
     
-    if (this.frame === this.framesPerTick) {
+    if (this.frame >= this.framesPerTick) {
         // Move the program state forward one tick and display the current
         // state of the playfield
         this.tick();
@@ -839,6 +848,7 @@ function toggleCheatSheet() {
 function loadProgram() {
     var sourceCode = document.getElementById('source'),
         ticksPerSecond = document.getElementById('ticks-per-second'),
+        framesPerTick = document.getElementById('frames-per-tick'),
         inputs = document.getElementById('inputs'),
         ioFormatSelect = document.getElementById('io-format'),
         expand = document.getElementById('expand'),
@@ -850,7 +860,8 @@ function loadProgram() {
     program = new Program(
         sourceCode.value.split(/\r?\n/),
         inputs.value.split(/\r?\n/),
-        ticksPerSecond.innerHTML,
+        ticksPerSecond.value,
+        framesPerTick.value,
         ioFormatSelect.value,
         expand.checked
     );
@@ -911,8 +922,6 @@ function runPauseBtnClick() {
     var runPause = document.getElementById('run-pause');
     if (program !== null && !program.done) {
         if (program.paused) {
-            var ticksPerSecond = document.getElementById('ticks-per-second');
-            program.setSpeed(ticksPerSecond.innerText);
             runPause.value = "Pause";
             program.run();
         } else {
@@ -938,6 +947,12 @@ function haltRestartBtnClick() {
         unloadProgram();
         loadProgram();
     }
+}
+
+function speedInputChange() {
+    var ticksPerSecond = document.getElementById('ticks-per-second'),
+        framesPerTick = document.getElementById('frames-per-tick');
+    program.setSpeed(ticksPerSecond.value, framesPerTick.value);
 }
 
 function permalinkBtnClick() {
