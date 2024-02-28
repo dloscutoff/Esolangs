@@ -74,6 +74,9 @@ canvas {
 input[type="number"] {
     width: 4em;
 }
+#cheat-sheet-indicator {
+    font-family: 'Courier New', monospace;
+}
 #done {
     border: #444;
     background: #888;
