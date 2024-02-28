@@ -20,6 +20,7 @@ const BLUE = "#ABF";
 const GREEN = "#6E6";
 const TEAL = "#4A9";
 const BLACK = "#000";
+const WHITE = "#FFF";
 
 const COLLECTOR_NAMES = "ABCDEFGHIJKLMNOPQRSTUWXYZ";
 const SIMPLE_DEVICES = ">^<v~+={}/\\|-@";
@@ -678,6 +679,16 @@ function drawDiamond(x, y, radius, color) {
     context.fill();
 }
 
+function drawRectangle(x, y, width, height, color) {
+    context.fillStyle = color;
+    context.beginPath();
+    context.moveTo(x - width / 2, y - height / 2);
+    context.lineTo(x + width / 2, y - height / 2);
+    context.lineTo(x + width / 2, y + height / 2);
+    context.lineTo(x - width / 2, y + height / 2);
+    context.fill();
+}
+
 function drawDeviceAt(device, x, y) {
     var textX = (x + 0.5) * GRID_SQUARE_SIZE - 0.3 * GRID_FONT_SIZE;
     var textY = (y + 0.5) * GRID_SQUARE_SIZE + 0.25 * GRID_FONT_SIZE;
@@ -685,14 +696,20 @@ function drawDeviceAt(device, x, y) {
     context.fillText(device.toString(), textX, textY);
     
     if (device instanceof Collector || device instanceof Source) {
-        for (let i = 0; i < Math.min(device.queue.length, 6); i++) {
-            let bit = device.queue[i];
-            drawBitsAt(
-                (bit.value ? ONE_BIT : ZERO_BIT),
-                x - (1 / 7 + i / 7) + 0.5,
-                y + 1 / 7 - 0.5,
-                0.25
-            );
+        if (device.queue.length > 0) {
+            // Show up to first 6 bits in queue above device
+            var backgroundX = (x + 0.5) * GRID_SQUARE_SIZE;
+            var backgroundY = (y + 1 / 7) * GRID_SQUARE_SIZE;
+            drawRectangle(backgroundX, backgroundY, GRID_SQUARE_SIZE, GRID_SQUARE_SIZE / 6, WHITE);
+            for (let i = 0; i < Math.min(device.queue.length, 6); i++) {
+                let bit = device.queue[i];
+                drawBitsAt(
+                    (bit.value ? ONE_BIT : ZERO_BIT),
+                    x - (1 / 7 + i / 7) + 0.5,
+                    y + 1 / 7 - 0.5,
+                    0.25
+                );
+            }
         }
     }
 }
