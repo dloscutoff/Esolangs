@@ -20,6 +20,7 @@ const BLUE = "#ABF";
 const GREEN = "#6E6";
 const TEAL = "#4A9";
 const BLACK = "#000";
+const WHITE = "#FFF";
 
 const COLLECTOR_NAMES = "ABCDEFGHIJKLMNOPQRSTUWXYZ";
 const SIMPLE_DEVICES = ">^<v~+={}/\\|-@";
@@ -258,10 +259,9 @@ Device.prototype.toString = function() {
 }
 
 // Define Program class
-function Program(codeLines, inputLines, ticksPerSecond, ioFormat, expand) {
+function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat, expand) {
     var sinkNumber = 0;
     
-    const framesPerTick = DEFAULT_FRAMES_PER_TICK;  // TODO: let user set this
     this.setSpeed(ticksPerSecond, framesPerTick);
     this.frame = 0;
     this.done = false;
@@ -350,9 +350,14 @@ function Program(codeLines, inputLines, ticksPerSecond, ioFormat, expand) {
 }
 
 Program.prototype.setSpeed = function(ticksPerSecond, framesPerTick) {
-    this.ticksPerSecond = +ticksPerSecond || this.ticksPerSecond || DEFAULT_TICKS_PER_SECOND;
-    this.framesPerTick = +framesPerTick || this.framesPerTick || DEFAULT_FRAMES_PER_TICK;
-    this.speed = this.ticksPerSecond * this.framesPerTick;
+    // Don't modify the speed directly in case we're in the middle of a step;
+    // instead, set attributes-in-waiting that will be copied over at the
+    // beginning of the next step
+    ticksPerSecond = Math.max(ticksPerSecond, 0);
+    framesPerTick = Math.max(framesPerTick, 0);
+    this._ticksPerSecond = Math.abs(ticksPerSecond) || this.ticksPerSecond || DEFAULT_TICKS_PER_SECOND;
+    this._framesPerTick = Math.abs(framesPerTick) || this.framesPerTick || DEFAULT_FRAMES_PER_TICK;
+    this._speed = this._ticksPerSecond * this._framesPerTick;
 }
 
 Program.prototype.run = function() {
@@ -364,10 +369,15 @@ Program.prototype.run = function() {
 }
 
 Program.prototype.step = function() {
+    // Update the program speed, in case it's been modified since the last step
+    this.ticksPerSecond = this._ticksPerSecond;
+    this.framesPerTick = this._framesPerTick;
+    this.speed = this._speed;
+    
     // Step one frame forward
     this.frame++;
     
-    if (this.frame === this.framesPerTick) {
+    if (this.frame >= this.framesPerTick) {
         // Move the program state forward one tick and display the current
         // state of the playfield
         this.tick();
@@ -669,6 +679,16 @@ function drawDiamond(x, y, radius, color) {
     context.fill();
 }
 
+function drawRectangle(x, y, width, height, color) {
+    context.fillStyle = color;
+    context.beginPath();
+    context.moveTo(x - width / 2, y - height / 2);
+    context.lineTo(x + width / 2, y - height / 2);
+    context.lineTo(x + width / 2, y + height / 2);
+    context.lineTo(x - width / 2, y + height / 2);
+    context.fill();
+}
+
 function drawDeviceAt(device, x, y) {
     var textX = (x + 0.5) * GRID_SQUARE_SIZE - 0.3 * GRID_FONT_SIZE;
     var textY = (y + 0.5) * GRID_SQUARE_SIZE + 0.25 * GRID_FONT_SIZE;
@@ -676,14 +696,20 @@ function drawDeviceAt(device, x, y) {
     context.fillText(device.toString(), textX, textY);
     
     if (device instanceof Collector || device instanceof Source) {
-        for (let i = 0; i < Math.min(device.queue.length, 6); i++) {
-            let bit = device.queue[i];
-            drawBitsAt(
-                (bit.value ? ONE_BIT : ZERO_BIT),
-                x - (1 / 7 + i / 7) + 0.5,
-                y + 1 / 7 - 0.5,
-                0.25
-            );
+        if (device.queue.length > 0) {
+            // Show up to first 6 bits in queue above device
+            var backgroundX = (x + 0.5) * GRID_SQUARE_SIZE;
+            var backgroundY = (y + 1 / 7) * GRID_SQUARE_SIZE;
+            drawRectangle(backgroundX, backgroundY, GRID_SQUARE_SIZE, GRID_SQUARE_SIZE / 6, WHITE);
+            for (let i = 0; i < Math.min(device.queue.length, 6); i++) {
+                let bit = device.queue[i];
+                drawBitsAt(
+                    (bit.value ? ONE_BIT : ZERO_BIT),
+                    x - (1 / 7 + i / 7) + 0.5,
+                    y + 1 / 7 - 0.5,
+                    0.25
+                );
+            }
         }
     }
 }
@@ -839,18 +865,21 @@ function toggleCheatSheet() {
 function loadProgram() {
     var sourceCode = document.getElementById('source'),
         ticksPerSecond = document.getElementById('ticks-per-second'),
+        framesPerTick = document.getElementById('frames-per-tick'),
         inputs = document.getElementById('inputs'),
         ioFormatSelect = document.getElementById('io-format'),
         expand = document.getElementById('expand'),
         runPause = document.getElementById('run-pause'),
         step = document.getElementById('step'),
+        tick = document.getElementById('tick'),
         done = document.getElementById('done'),
         haltRestart = document.getElementById('halt-restart');
     
     program = new Program(
         sourceCode.value.split(/\r?\n/),
         inputs.value.split(/\r?\n/),
-        ticksPerSecond.innerHTML,
+        ticksPerSecond.value,
+        framesPerTick.value,
         ioFormatSelect.value,
         expand.checked
     );
@@ -866,6 +895,11 @@ function loadProgram() {
     
     runPause.style.display = "block";
     step.style.display = "block";
+    if (framesPerTick.value > 1) {
+        tick.style.display = "block";
+    } else {
+        tick.style.display = "none";
+    }
     done.style.display = "none";
     runPause.value = "Run";
     haltRestart.value = "Halt";
@@ -886,6 +920,7 @@ function unloadProgram() {
 function haltProgram() {
     var runPause = document.getElementById('run-pause'),
         step = document.getElementById('step'),
+        tick = document.getElementById('tick'),
         done = document.getElementById('done'),
         haltRestart = document.getElementById('halt-restart');
     
@@ -893,6 +928,7 @@ function haltProgram() {
     
     runPause.style.display = "none";
     step.style.display = "none";
+    tick.style.display = "none";
     done.style.display = "block";
     haltRestart.value = "Restart";
 }
@@ -911,8 +947,6 @@ function runPauseBtnClick() {
     var runPause = document.getElementById('run-pause');
     if (program !== null && !program.done) {
         if (program.paused) {
-            var ticksPerSecond = document.getElementById('ticks-per-second');
-            program.setSpeed(ticksPerSecond.innerText);
             runPause.value = "Pause";
             program.run();
         } else {
@@ -931,12 +965,33 @@ function stepBtnClick() {
     }
 }
 
+function tickBtnClick() {
+    var runPause = document.getElementById('run-pause');
+    if (program !== null && !program.done) {
+        program.pause();
+        program.tick();
+        runPause.value = "Run";
+    }
+}
+
 function haltRestartBtnClick() {
     if (!program.done) {
         haltProgram();
     } else {
         unloadProgram();
         loadProgram();
+    }
+}
+
+function speedInputChange() {
+    var ticksPerSecond = document.getElementById('ticks-per-second'),
+        framesPerTick = document.getElementById('frames-per-tick'),
+        tick = document.getElementById('tick');
+    program.setSpeed(ticksPerSecond.value, framesPerTick.value);
+    if (framesPerTick.value > 1) {
+        tick.style.display = "block";
+    } else {
+        tick.style.display = "none";
     }
 }
 

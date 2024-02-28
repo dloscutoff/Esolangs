@@ -43,11 +43,18 @@ With contributions from Mousetail (https://github.com/mousetail)
     <div id="execution-buttons" class="container">
         <input type="button" id="run-pause" class="control float-left so-box" value="Run/Pause" onclick="runPauseBtnClick()" />
         <input type="button" id="step" class="control float-left so-box" value="Step" onclick="stepBtnClick()" />
+        <input type="button" id="tick" class="control float-left so-box" value="Tick" onclick="tickBtnClick()" />
         <span id="done" class="control float-left so-box">Done.</span>
         <input type="button" id="halt-restart" class="control float-left so-box" value="Halt/Restart" onclick="haltRestartBtnClick()" />
     </div>
     <div id="execution-options" class="container">
-        <div class="option float-left so-box">Ticks per second: <span id="ticks-per-second" contenteditable>10</span>
+        <div class="option float-left so-box">
+            <label for="ticks-per-second">Ticks per second:</label>
+            <input type="number" id="ticks-per-second" min="1" value="10" onchange="speedInputChange()" />
+        </div>
+        <div class="option float-left so-box">
+            <label for="frames-per-tick">Frames per tick:</label>
+            <input type="number" id="frames-per-tick" min="1" value="1" onchange="speedInputChange()" />
         </div>
     </div>
 </div>

@@ -24,7 +24,6 @@
 }
 .option {
     margin: 2px;
-    padding: 10px 15px;
 }
 .float-left {
     display: inline-block;
@@ -72,10 +71,8 @@ textarea {
 canvas {
     border: 1px solid #bbb;
 }
-span[contenteditable] {
-    padding: 2px 6px;
-    background: #56c;
-    color: #fff;
+input[type="number"] {
+    width: 4em;
 }
 #done {
     border: #444;
