@@ -854,6 +854,7 @@ function loadProgram() {
         expand = document.getElementById('expand'),
         runPause = document.getElementById('run-pause'),
         step = document.getElementById('step'),
+        tick = document.getElementById('tick'),
         done = document.getElementById('done'),
         haltRestart = document.getElementById('halt-restart');
     
@@ -877,6 +878,11 @@ function loadProgram() {
     
     runPause.style.display = "block";
     step.style.display = "block";
+    if (framesPerTick.value > 1) {
+        tick.style.display = "block";
+    } else {
+        tick.style.display = "none";
+    }
     done.style.display = "none";
     runPause.value = "Run";
     haltRestart.value = "Halt";
@@ -897,6 +903,7 @@ function unloadProgram() {
 function haltProgram() {
     var runPause = document.getElementById('run-pause'),
         step = document.getElementById('step'),
+        tick = document.getElementById('tick'),
         done = document.getElementById('done'),
         haltRestart = document.getElementById('halt-restart');
     
@@ -904,6 +911,7 @@ function haltProgram() {
     
     runPause.style.display = "none";
     step.style.display = "none";
+    tick.style.display = "none";
     done.style.display = "block";
     haltRestart.value = "Restart";
 }
@@ -940,6 +948,15 @@ function stepBtnClick() {
     }
 }
 
+function tickBtnClick() {
+    var runPause = document.getElementById('run-pause');
+    if (program !== null && !program.done) {
+        program.pause();
+        program.tick();
+        runPause.value = "Run";
+    }
+}
+
 function haltRestartBtnClick() {
     if (!program.done) {
         haltProgram();
@@ -951,8 +968,14 @@ function haltRestartBtnClick() {
 
 function speedInputChange() {
     var ticksPerSecond = document.getElementById('ticks-per-second'),
-        framesPerTick = document.getElementById('frames-per-tick');
+        framesPerTick = document.getElementById('frames-per-tick'),
+        tick = document.getElementById('tick');
     program.setSpeed(ticksPerSecond.value, framesPerTick.value);
+    if (framesPerTick.value > 1) {
+        tick.style.display = "block";
+    } else {
+        tick.style.display = "none";
+    }
 }
 
 function permalinkBtnClick() {
