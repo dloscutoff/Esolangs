@@ -6,10 +6,8 @@ const NORTH = 1;
 const EAST = 2;
 const SOUTH = 3;
 
-const ZERO_BIT = 1;
-const ONE_BIT = 2;
-
 const BIT_SHAPE_RADIUS = 7;
+const QUEUE_BIT_SCALE = 0.25;
 const GRID_SQUARE_SIZE = 24;
 const GRID_FONT_SIZE = 14;
 
@@ -49,7 +47,7 @@ function dy(direction) {
 }
 
 function turnRight(direction) {
-    var newDirection;
+    let newDirection = null;
     switch (direction) {
         case NORTH:
             newDirection = EAST;
@@ -71,7 +69,7 @@ function turnRight(direction) {
 }
 
 function turnLeft(direction) {
-    var newDirection;
+    let newDirection = null;
     switch (direction) {
         case NORTH:
             newDirection = WEST;
@@ -144,15 +142,16 @@ Bit.prototype.toString = function() {
 }
 
 // Define Collector class
-function Collector(chr) {
+function Collector(x, y, chr) {
+    this.x = x;
+    this.y = y;
     this.chr = chr.toUpperCase();
     this.open = false;
     this.queue = [];
-    this.bitCode = 0;
 }
 
 Collector.prototype.tick = function() {
-    var outBit = null;
+    let outBit = null;
     if (this.open) {
         if (this.queue.length > 0) {
             outBit = this.queue.shift();
@@ -186,7 +185,7 @@ function Source(x, y, inputString, ioFormat) {
 }
 
 Source.prototype.tick = function() {
-    var outBit = null;
+    let outBit = null;
     if (this.open) {
         outBit = this.queue.shift();
         if (this.queue.length === 0) {
@@ -201,7 +200,9 @@ Source.prototype.toString = function() {
 }
 
 // Define Sink class
-function Sink(idNumber, ioFormat) {
+function Sink(x, y, idNumber, ioFormat) {
+    this.x = x;
+    this.y = y;
     this.idNumber = idNumber;
     this.ioFormat = ioFormat;
     this.buffer = "";
@@ -227,7 +228,7 @@ Sink.prototype.output = function(bit) {
 }
 
 Sink.prototype.flush = function() {
-    var outputArea = document.getElementById('output' + this.idNumber);
+    const outputArea = document.getElementById('output' + this.idNumber);
     if (this.ioFormat === "raw") {
         outputArea.textContent += this.buffer;
     } else if (this.ioFormat === "unsigned") {
@@ -249,9 +250,10 @@ Sink.prototype.toString = function() {
 }
 
 // Define Device class for generic devices that aren't Collectors, Sources, or Sinks
-function Device(chr) {
+function Device(x, y, chr) {
+    this.x = x;
+    this.y = y;
     this.chr = chr;
-    this.bitCode = 0;
 }
 
 Device.prototype.toString = function() {
@@ -260,8 +262,10 @@ Device.prototype.toString = function() {
 
 // Define Program class
 function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat, expand) {
-    var sinkNumber = 0;
+    let sinkNumber = 0;
     
+    this.ticksPerSecond = DEFAULT_TICKS_PER_SECOND;
+    this.framesPerTick = DEFAULT_FRAMES_PER_TICK;
     this.setSpeed(ticksPerSecond, framesPerTick);
     this.frame = 0;
     this.done = false;
@@ -269,8 +273,8 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
     
     if (expand) {
         // Add a blank line every other line and an empty column every other column
-        for (var y = codeLines.length - 1; y >= 0; y--) {
-            var newLine = " " + codeLines[y].split("").join(" ") + " ";
+        for (let y = codeLines.length - 1; y >= 0; y--) {
+            let newLine = " " + codeLines[y].split("").join(" ") + " ";
             codeLines.splice(y, 1, "", newLine);
         }
         codeLines.push("");
@@ -278,6 +282,9 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
     
     this.height = codeLines.length;
     this.width = Math.max(...codeLines.map(line => line.length));
+    if (this.width === 0) {
+        this.width = 1;
+    }
     this.collectors = {};
     this.openCollectors = [];
     this.sources = [];
@@ -285,14 +292,14 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
     this.activeBits = [];
     this.grid = [];
     
-    for (var y = 0; y < this.height; y++) {
-        var row = [];
-        for (var x = 0; x < this.width; x++) {
+    for (let y = 0; y < this.height; y++) {
+        const row = [];
+        for (let x = 0; x < this.width; x++) {
             if (x < codeLines[y].length) {
-                var chr = codeLines[y][x].toLowerCase();
+                const chr = codeLines[y][x].toLowerCase();
                 if (COLLECTOR_NAMES.indexOf(chr.toUpperCase()) > -1) {
                     // A letter (that isn't v) is a collector
-                    var collector = new Collector(chr);
+                    const collector = new Collector(x, y, chr);
                     if (this.collectors[collector.chr]) {
                         this.collectors[collector.chr].push(collector);
                     } else {
@@ -301,31 +308,29 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
                     row.push(collector);
                 } else if (chr === "?") {
                     // A question mark is a source
-                    var inputData;
+                    let inputData = "";
                     if (inputLines.length > 0) {
                         inputData = inputLines.shift();
-                    } else {
-                        inputData = "";
                     }
-                    var source = new Source(x, y, inputData, ioFormat);
+                    const source = new Source(x, y, inputData, ioFormat);
                     if (source.open) {
                         this.sources.push(source);
                     }
                     row.push(source);
                 } else if (chr === "!") {
                     // An exclamation point is a sink
-                    var sink = new Sink(sinkNumber, ioFormat);
+                    const sink = new Sink(x, y, sinkNumber, ioFormat);
                     this.sinks.push(sink);
                     row.push(sink);
                     // Create an output area for this sink
-                    var outputArea = document.createElement('div');
+                    const outputArea = document.createElement('div');
                     outputArea.setAttribute("id", "output" + sinkNumber + "Area");
                     outputArea.setAttribute("class", "output");
-                    var outputLabel = document.createElement('span');
+                    const outputLabel = document.createElement('span');
                     outputArea.setAttribute("id", "output" + sinkNumber + "Label");
                     outputLabel.textContent = "Out" + (sinkNumber + 1) + ": ";
                     outputArea.appendChild(outputLabel);
-                    var output = document.createElement('span');
+                    const output = document.createElement('span');
                     output.setAttribute("id", "output" + sinkNumber);
                     output.textContent = "";
                     outputArea.appendChild(output);
@@ -334,15 +339,15 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
                 } else if (chr === "0" || chr === "1") {
                     // A 0 or 1 is a bit
                     this.activeBits.push(new Bit(x, y, EAST, chr));
-                    row.push(new Device(" "));
+                    row.push(new Device(x, y, " "));
                 } else if (SIMPLE_DEVICES.indexOf(chr) > -1) {
                     // A device without any storage capacity
-                    row.push(new Device(chr));
+                    row.push(new Device(x, y, chr));
                 } else {
-                    row.push(new Device(chr));
+                    row.push(new Device(x, y, chr));
                 }
             } else {
-                row.push(new Device(" "));
+                row.push(new Device(x, y, " "));
             }
         }
         this.grid.push(row);
@@ -395,11 +400,13 @@ Program.prototype.tick = function() {
     
     if (this.activeBits.length > 0) {
         // Move bits that are on the playfield
-        for (var b = this.activeBits.length - 1; b >= 0; b--) {
-            var bit = this.activeBits[b];
+        // Loop over the array of active bits in reverse order so we can
+        // remove bits from the array without messing up the loop
+        for (let b = this.activeBits.length - 1; b >= 0; b--) {
+            const bit = this.activeBits[b];
             bit.tick();
             if (0 <= bit.x && bit.x < this.width && 0 <= bit.y && bit.y < this.height) {
-                var device = this.grid[bit.y][bit.x];
+                const device = this.grid[bit.y][bit.x];
                 if (device instanceof Collector) {
                     // Add the bit to the collector's queue and remove it from active bits
                     device.queue.push(bit);
@@ -429,9 +436,9 @@ Program.prototype.tick = function() {
                             break;
                         case "+":
                             // Turn right if bit is 1, left if 0
-                            if (bit.value === 1) {
+                            if (bit.value) {
                                 bit.direction = turnRight(bit.direction);
-                            } else if (bit.value === 0) {
+                            } else {
                                 bit.direction = turnLeft(bit.direction);
                             }
                             break;
@@ -485,10 +492,10 @@ Program.prototype.tick = function() {
                             break;
                         case "=":
                             // Pass this bit straight through, but change device
-                            // to one of {} based on this bit's value
-                            if (bit.value === 1) {
+                            // to } if bit is 1, { if 0
+                            if (bit.value) {
                                 device.chr = "}";
-                            } else if (bit.value === 0) {
+                            } else {
                                 device.chr = "{";
                             }
                             break;
@@ -508,13 +515,11 @@ Program.prototype.tick = function() {
         }
     } else {
         // No bits are on the playfield; see if there's a collector we can open
-        var nextCollectorName = null;
-        for (var n = 0; n < COLLECTOR_NAMES.length; n++) {
-            var name = COLLECTOR_NAMES[n];
+        let nextCollectorName = null;
+        for (const name of COLLECTOR_NAMES) {
             if (this.collectors[name] && this.collectors[name].length > 0) {
-                var nonemptyCollector = false;
-                for (var c = 0; c < this.collectors[name].length; c++) {
-                    var collector = this.collectors[name][c];
+                let nonemptyCollector = false;
+                for (const collector of this.collectors[name]) {
                     if (collector.queue.length > 0) {
                         // At least one collector with this name has bits in it
                         nonemptyCollector = true;
@@ -530,8 +535,8 @@ Program.prototype.tick = function() {
         if (nextCollectorName !== null) {
             // Open the collectors of the first name that has bits
             this.openCollectors = this.collectors[nextCollectorName].slice();
-            for (var c = 0; c < this.openCollectors.length; c++) {
-                this.openCollectors[c].open = true;
+            for (const collector of this.openCollectors) {
+                collector.open = true;
             }
             this.reset();
         } else if (this.sources.length === 0) {
@@ -542,9 +547,11 @@ Program.prototype.tick = function() {
     
     if (this.sources.length > 0) {
         // Send a bit out of each source that still has bits
-        for (var s = this.sources.length - 1; s >= 0; s--) {
-            var source = this.sources[s];
-            var outBit = source.tick();
+        // Loop over the array of sources in reverse order so we can
+        // remove sources from the array without messing up the loop
+        for (let s = this.sources.length - 1; s >= 0; s--) {
+            const source = this.sources[s];
+            const outBit = source.tick();
             if (outBit !== null) {
                 this.activeBits.push(outBit);
                 if (!source.open) {
@@ -557,9 +564,11 @@ Program.prototype.tick = function() {
     
     if (this.openCollectors.length > 0) {
         // Send a bit out of each open collector that still has bits
-        for (var c = this.openCollectors.length - 1; c >= 0; c--) {
-            var collector = this.openCollectors[c];
-            var outBit = collector.tick();
+        // Loop over the array of collectors in reverse order so we can
+        // remove collectors from the array without messing up the loop
+        for (let c = this.openCollectors.length - 1; c >= 0; c--) {
+            const collector = this.openCollectors[c];
+            const outBit = collector.tick();
             if (outBit !== null) {
                 this.activeBits.push(outBit);
             } else {
@@ -575,10 +584,8 @@ Program.prototype.tick = function() {
 }
 
 Program.prototype.reset = function() {
-    for (var y = 0; y < this.height; y++) {
-        var row = this.grid[y];
-        for (var x = 0; x < this.width; x++) {
-            var device = row[x];
+    for (const row of this.grid) {
+        for (const device of row) {
             switch (device.toString()) {
                 case "|":
                     device.chr = "/";
@@ -605,31 +612,25 @@ Program.prototype.pause = function() {
 Program.prototype.halt = function() {
     this.done = true;
     this.pause();
-    for (var s = 0; s < this.sinks.length; s++) {
-        this.sinks[s].flush();
+    for (const sink of this.sinks) {
+        sink.flush();
     }
 }
 
 Program.prototype.displayPlayfield = function() {
     clearCanvas();
-    // Display all zero bits on the playfield first
-    for (var b = 0; b < this.activeBits.length; b++) {
-        if (this.activeBits[b].value === 0) {
-            drawBitOffset(this.activeBits[b], this.frame / this.framesPerTick );
-        }
-    }
-    // Then display all one bits on the playfield
-    for (var b = 0; b < this.activeBits.length; b++) {
-        if (this.activeBits[b].value === 1) {
-            drawBitOffset(this.activeBits[b], this.frame / this.framesPerTick );
+    // Display all zero bits on the playfield first, followed by all one bits
+    for (const bitType of [0, 1]) {
+        for (const bit of this.activeBits) {
+            if (bit.value === bitType) {
+                drawBitOffset(bit, this.frame / this.framesPerTick );
+            }
         }
     }
     // Then display devices
-    for (var y = 0; y < this.grid.length; y++) {
-        var row = this.grid[y];
-        for (var x = 0; x < row.length; x++) {
-            var device = row[x];
-            drawDeviceAt(device, x, y);
+    for (const row of this.grid) {
+        for (const device of row) {
+            drawDevice(device);
         }
     }
 }
@@ -641,24 +642,40 @@ function clearCanvas() {
 }
 
 function drawBitOffset(bit, offsetAmount) {
-    var x = bit.x + dx(bit.direction) * offsetAmount;
-    var y = bit.y + dy(bit.direction) * offsetAmount;
-    var bitCode = (bit.value ? ONE_BIT : ZERO_BIT);
-    drawBitsAt(bitCode, x, y);
+    const x = bit.x + 0.5 + dx(bit.direction) * offsetAmount;
+    const y = bit.y + 0.5 + dy(bit.direction) * offsetAmount;
+    drawBitAt(bit, x, y);
 }
 
-function drawBitsAt(bitCode, x, y, scale=1) {
-    if (bitCode > 0) {
-        var centerX = (x + 0.5) * GRID_SQUARE_SIZE;
-        var centerY = (y + 0.5) * GRID_SQUARE_SIZE;
-        if (bitCode === ZERO_BIT) {
-            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS * scale, BLUE);
-        } else if (bitCode === ONE_BIT) {
-            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS * scale, GREEN);
-        } else {  // Both a zero and a one bit
-            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS * scale, BLUE);
-            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS * scale, GREEN);
+function drawDevice(device) {
+    drawDeviceAt(device, device.x + 0.5, device.y + 0.5);
+    if (device instanceof Collector || device instanceof Source) {
+        if (device.queue.length > 0) {
+            drawQueueAt(device.queue, device.x + 0.5, device.y + 1/7);
         }
+    }
+}
+
+function drawBitAt(bit, x, y, scale=1) {
+    // Draw a green diamond for a 1 bit, blue circle for a 0 bit
+    if (bit.value) {
+        drawDiamond(x * GRID_SQUARE_SIZE, y * GRID_SQUARE_SIZE, BIT_SHAPE_RADIUS * scale, GREEN);
+    } else {
+        drawCircle(x * GRID_SQUARE_SIZE, y * GRID_SQUARE_SIZE, BIT_SHAPE_RADIUS * scale, BLUE);
+    }
+}
+
+function drawDeviceAt(device, x, y) {
+    drawCharacter(device.toString(), x * GRID_SQUARE_SIZE, y * GRID_SQUARE_SIZE, BLACK);
+}
+
+function drawQueueAt(queue, x, y) {
+    // Show up to first 6 bits in queue above device with a white background
+    drawRectangle(x * GRID_SQUARE_SIZE, y * GRID_SQUARE_SIZE, GRID_SQUARE_SIZE, GRID_SQUARE_SIZE / 6, WHITE);
+    for (let i = 0; i < Math.min(queue.length, 6); i++) {
+        const bit = queue[i];
+        const offset = (i + 1) / 7;
+        drawBitAt(bit, x + 0.5 - offset, y, QUEUE_BIT_SCALE);
     }
 }
 
@@ -679,6 +696,11 @@ function drawDiamond(x, y, radius, color) {
     context.fill();
 }
 
+function drawCharacter(character, x, y, color) {
+    context.fillStyle = color;
+    context.fillText(character, x - 0.3 * GRID_FONT_SIZE, y + 0.25 * GRID_FONT_SIZE);
+}
+
 function drawRectangle(x, y, width, height, color) {
     context.fillStyle = color;
     context.beginPath();
@@ -687,31 +709,6 @@ function drawRectangle(x, y, width, height, color) {
     context.lineTo(x + width / 2, y + height / 2);
     context.lineTo(x - width / 2, y + height / 2);
     context.fill();
-}
-
-function drawDeviceAt(device, x, y) {
-    var textX = (x + 0.5) * GRID_SQUARE_SIZE - 0.3 * GRID_FONT_SIZE;
-    var textY = (y + 0.5) * GRID_SQUARE_SIZE + 0.25 * GRID_FONT_SIZE;
-    context.fillStyle = BLACK;
-    context.fillText(device.toString(), textX, textY);
-    
-    if (device instanceof Collector || device instanceof Source) {
-        if (device.queue.length > 0) {
-            // Show up to first 6 bits in queue above device
-            var backgroundX = (x + 0.5) * GRID_SQUARE_SIZE;
-            var backgroundY = (y + 1 / 7) * GRID_SQUARE_SIZE;
-            drawRectangle(backgroundX, backgroundY, GRID_SQUARE_SIZE, GRID_SQUARE_SIZE / 6, WHITE);
-            for (let i = 0; i < Math.min(device.queue.length, 6); i++) {
-                let bit = device.queue[i];
-                drawBitsAt(
-                    (bit.value ? ONE_BIT : ZERO_BIT),
-                    x - (1 / 7 + i / 7) + 0.5,
-                    y + 1 / 7 - 0.5,
-                    0.25
-                );
-            }
-        }
-    }
 }
 
 function urlDecode(value) {
@@ -735,15 +732,13 @@ function urlEncode(value) {
 }
 
 function loadFromQueryString() {
-    var sourceCode = document.getElementById('source'),
-        inputs = document.getElementById('inputs'),
-        ioFormatSelect = document.getElementById('io-format');
-    var queryString = location.search.slice(1);
+    const sourceCode = document.getElementById('source'),
+          inputs = document.getElementById('inputs'),
+          ioFormatSelect = document.getElementById('io-format'),
+          queryString = location.search.slice(1);
     
     for (const param of queryString.split("&")) {
-        var key;
-        var value;
-        [key, value] = param.split("=");
+        const [key, value] = param.split("=");
         if (key === "p") {
             sourceCode.value = unpackCode(value);
         } else if (key === "i") {
@@ -759,10 +754,10 @@ function loadFromQueryString() {
 }
 
 function generateQueryString() {
-    var sourceCode = document.getElementById('source'),
-        inputs = document.getElementById('inputs'),
-        ioFormatSelect = document.getElementById('io-format');
-    var params = [
+    const sourceCode = document.getElementById('source'),
+          inputs = document.getElementById('inputs'),
+          ioFormatSelect = document.getElementById('io-format');
+    const params = [
         ["p", packCode(sourceCode.value)],
         ["i", urlEncode(inputs.value)],
         ["f", ioFormatSelect.selectedIndex]
@@ -775,11 +770,10 @@ function generatePermalink() {
 }
 
 function packCode(unpackedCode) {
-    var packedCode;
     unpackedCode = unpackedCode.replaceAll(/[^ -~\n]/g, ".");
-    packedCode = unpackedCode.replaceAll(/(.|\n)\1{0,8}/g, run => {
-        var i = PLAIN_CHARS.indexOf(run[0]);
-        var e;
+    const packedCode = unpackedCode.replaceAll(/(.|\n)\1{0,8}/g, run => {
+        const i = PLAIN_CHARS.indexOf(run[0]);
+        let e = null;
         if (i >= 0) {
             e = ENCODED_CHARS[i];
         } else if (/[A-Z01]/.test(run)) {
@@ -797,10 +791,9 @@ function packCode(unpackedCode) {
 }
 
 function unpackCode(packedCode) {
-    var unpackedCode;
-    unpackedCode = packedCode.replaceAll(/(_?.)([2-9]?)/g, (m, e, num) => {
-        var i = ENCODED_CHARS.indexOf(e);
-        var c;
+    const unpackedCode = packedCode.replaceAll(/(_?.)([2-9]?)/g, (m, e, num) => {
+        const i = ENCODED_CHARS.indexOf(e);
+        let c = null;
         if (i >= 0) {
             c = PLAIN_CHARS[i];
         } else {
@@ -817,12 +810,12 @@ function unpackCode(packedCode) {
 }
 
 function showEditor() {
-    var editor = document.getElementById('editor'),
-        interpreter = document.getElementById('interpreter'),
-        startEdit = document.getElementById('start-edit'),
-        permalink = document.getElementById('permalink'),
-        executionControls = document.getElementById('execution-controls'),
-        sourceCode = document.getElementById('source');
+    const editor = document.getElementById('editor'),
+          interpreter = document.getElementById('interpreter'),
+          startEdit = document.getElementById('start-edit'),
+          permalink = document.getElementById('permalink'),
+          executionControls = document.getElementById('execution-controls'),
+          sourceCode = document.getElementById('source');
     
     editor.style.display = "block";
     interpreter.style.display = "none";
@@ -835,11 +828,11 @@ function showEditor() {
 }
 
 function hideEditor() {
-    var editor = document.getElementById('editor'),
-        interpreter = document.getElementById('interpreter'),
-        startEdit = document.getElementById('start-edit'),
-        permalink = document.getElementById('permalink'),
-        executionControls = document.getElementById('execution-controls');
+    const editor = document.getElementById('editor'),
+          interpreter = document.getElementById('interpreter'),
+          startEdit = document.getElementById('start-edit'),
+          permalink = document.getElementById('permalink'),
+          executionControls = document.getElementById('execution-controls');
     
     editor.style.display = "none";
     interpreter.style.display = "block";
@@ -850,8 +843,8 @@ function hideEditor() {
 }
 
 function toggleCheatSheet() {
-    var cheatSheet = document.getElementById('cheat-sheet'),
-        indicator = document.getElementById('cheat-sheet-indicator');
+    const cheatSheet = document.getElementById('cheat-sheet'),
+          indicator = document.getElementById('cheat-sheet-indicator');
     
     if (cheatSheet.classList.contains("hide")) {
         cheatSheet.classList.remove("hide");
@@ -863,17 +856,17 @@ function toggleCheatSheet() {
 }
 
 function loadProgram() {
-    var sourceCode = document.getElementById('source'),
-        ticksPerSecond = document.getElementById('ticks-per-second'),
-        framesPerTick = document.getElementById('frames-per-tick'),
-        inputs = document.getElementById('inputs'),
-        ioFormatSelect = document.getElementById('io-format'),
-        expand = document.getElementById('expand'),
-        runPause = document.getElementById('run-pause'),
-        step = document.getElementById('step'),
-        tick = document.getElementById('tick'),
-        done = document.getElementById('done'),
-        haltRestart = document.getElementById('halt-restart');
+    const sourceCode = document.getElementById('source'),
+          ticksPerSecond = document.getElementById('ticks-per-second'),
+          framesPerTick = document.getElementById('frames-per-tick'),
+          inputs = document.getElementById('inputs'),
+          ioFormatSelect = document.getElementById('io-format'),
+          expand = document.getElementById('expand'),
+          runPause = document.getElementById('run-pause'),
+          step = document.getElementById('step'),
+          tick = document.getElementById('tick'),
+          done = document.getElementById('done'),
+          haltRestart = document.getElementById('halt-restart');
     
     program = new Program(
         sourceCode.value.split(/\r?\n/),
@@ -911,18 +904,18 @@ function unloadProgram() {
     }
     program = null;
     // Delete all output areas
-    var outputContainer = document.getElementById('output-container');
+    const outputContainer = document.getElementById('output-container');
     while (outputContainer.firstChild) {
         outputContainer.removeChild(outputContainer.lastChild);
     }
 }
 
 function haltProgram() {
-    var runPause = document.getElementById('run-pause'),
-        step = document.getElementById('step'),
-        tick = document.getElementById('tick'),
-        done = document.getElementById('done'),
-        haltRestart = document.getElementById('halt-restart');
+    const runPause = document.getElementById('run-pause'),
+          step = document.getElementById('step'),
+          tick = document.getElementById('tick'),
+          done = document.getElementById('done'),
+          haltRestart = document.getElementById('halt-restart');
     
     program.halt();
     
@@ -944,7 +937,7 @@ function startEditBtnClick() {
 }
 
 function runPauseBtnClick() {
-    var runPause = document.getElementById('run-pause');
+    const runPause = document.getElementById('run-pause');
     if (program !== null && !program.done) {
         if (program.paused) {
             runPause.value = "Pause";
@@ -957,7 +950,7 @@ function runPauseBtnClick() {
 }
 
 function stepBtnClick() {
-    var runPause = document.getElementById('run-pause');
+    const runPause = document.getElementById('run-pause');
     if (program !== null && !program.done) {
         program.pause();
         program.step();
@@ -966,7 +959,7 @@ function stepBtnClick() {
 }
 
 function tickBtnClick() {
-    var runPause = document.getElementById('run-pause');
+    const runPause = document.getElementById('run-pause');
     if (program !== null && !program.done) {
         program.pause();
         program.tick();
@@ -984,11 +977,11 @@ function haltRestartBtnClick() {
 }
 
 function speedInputChange() {
-    var ticksPerSecond = document.getElementById('ticks-per-second'),
-        framesPerTick = document.getElementById('frames-per-tick'),
-        tick = document.getElementById('tick');
+    const ticksPerSecond = document.getElementById('ticks-per-second'),
+          framesPerTick = document.getElementById('frames-per-tick'),
+          tick = document.getElementById('tick');
     program.setSpeed(ticksPerSecond.value, framesPerTick.value);
-    if (framesPerTick.value > 1) {
+    if (!program.done && framesPerTick.value > 1) {
         tick.style.display = "block";
     } else {
         tick.style.display = "none";
@@ -996,7 +989,7 @@ function speedInputChange() {
 }
 
 function permalinkBtnClick() {
-    var permalink = generatePermalink();
+    const permalink = generatePermalink();
     // Copy the permalink to the clipboard, and then (whether the copy succeeded or not)
     // go to the permalink URL
     navigator.clipboard.writeText(permalink).then(
