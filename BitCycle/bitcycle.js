@@ -6,10 +6,8 @@ const NORTH = 1;
 const EAST = 2;
 const SOUTH = 3;
 
-const ZERO_BIT = 1;
-const ONE_BIT = 2;
-
 const BIT_SHAPE_RADIUS = 7;
+const QUEUE_BIT_SCALE = 0.25;
 const GRID_SQUARE_SIZE = 24;
 const GRID_FONT_SIZE = 14;
 
@@ -144,11 +142,12 @@ Bit.prototype.toString = function() {
 }
 
 // Define Collector class
-function Collector(chr) {
+function Collector(x, y, chr) {
+    this.x = x;
+    this.y = y;
     this.chr = chr.toUpperCase();
     this.open = false;
     this.queue = [];
-    this.bitCode = 0;
 }
 
 Collector.prototype.tick = function() {
@@ -201,7 +200,9 @@ Source.prototype.toString = function() {
 }
 
 // Define Sink class
-function Sink(idNumber, ioFormat) {
+function Sink(x, y, idNumber, ioFormat) {
+    this.x = x;
+    this.y = y;
     this.idNumber = idNumber;
     this.ioFormat = ioFormat;
     this.buffer = "";
@@ -249,9 +250,10 @@ Sink.prototype.toString = function() {
 }
 
 // Define Device class for generic devices that aren't Collectors, Sources, or Sinks
-function Device(chr) {
+function Device(x, y, chr) {
+    this.x = x;
+    this.y = y;
     this.chr = chr;
-    this.bitCode = 0;
 }
 
 Device.prototype.toString = function() {
@@ -292,7 +294,7 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
                 var chr = codeLines[y][x].toLowerCase();
                 if (COLLECTOR_NAMES.indexOf(chr.toUpperCase()) > -1) {
                     // A letter (that isn't v) is a collector
-                    var collector = new Collector(chr);
+                    var collector = new Collector(x, y, chr);
                     if (this.collectors[collector.chr]) {
                         this.collectors[collector.chr].push(collector);
                     } else {
@@ -314,7 +316,7 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
                     row.push(source);
                 } else if (chr === "!") {
                     // An exclamation point is a sink
-                    var sink = new Sink(sinkNumber, ioFormat);
+                    var sink = new Sink(x, y, sinkNumber, ioFormat);
                     this.sinks.push(sink);
                     row.push(sink);
                     // Create an output area for this sink
@@ -334,15 +336,15 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
                 } else if (chr === "0" || chr === "1") {
                     // A 0 or 1 is a bit
                     this.activeBits.push(new Bit(x, y, EAST, chr));
-                    row.push(new Device(" "));
+                    row.push(new Device(x, y, " "));
                 } else if (SIMPLE_DEVICES.indexOf(chr) > -1) {
                     // A device without any storage capacity
-                    row.push(new Device(chr));
+                    row.push(new Device(x, y, chr));
                 } else {
-                    row.push(new Device(chr));
+                    row.push(new Device(x, y, chr));
                 }
             } else {
-                row.push(new Device(" "));
+                row.push(new Device(x, y, " "));
             }
         }
         this.grid.push(row);
@@ -429,9 +431,9 @@ Program.prototype.tick = function() {
                             break;
                         case "+":
                             // Turn right if bit is 1, left if 0
-                            if (bit.value === 1) {
+                            if (bit.value) {
                                 bit.direction = turnRight(bit.direction);
-                            } else if (bit.value === 0) {
+                            } else {
                                 bit.direction = turnLeft(bit.direction);
                             }
                             break;
@@ -485,10 +487,10 @@ Program.prototype.tick = function() {
                             break;
                         case "=":
                             // Pass this bit straight through, but change device
-                            // to one of {} based on this bit's value
-                            if (bit.value === 1) {
+                            // to } if bit is 1, { if 0
+                            if (bit.value) {
                                 device.chr = "}";
-                            } else if (bit.value === 0) {
+                            } else {
                                 device.chr = "{";
                             }
                             break;
@@ -612,16 +614,12 @@ Program.prototype.halt = function() {
 
 Program.prototype.displayPlayfield = function() {
     clearCanvas();
-    // Display all zero bits on the playfield first
-    for (var b = 0; b < this.activeBits.length; b++) {
-        if (this.activeBits[b].value === 0) {
-            drawBitOffset(this.activeBits[b], this.frame / this.framesPerTick );
-        }
-    }
-    // Then display all one bits on the playfield
-    for (var b = 0; b < this.activeBits.length; b++) {
-        if (this.activeBits[b].value === 1) {
-            drawBitOffset(this.activeBits[b], this.frame / this.framesPerTick );
+    // Display all zero bits on the playfield first, followed by all one bits
+    for (var bitType = 0; bitType <= 1; bitType++) {
+        for (var b = 0; b < this.activeBits.length; b++) {
+            if (this.activeBits[b].value === bitType) {
+                drawBitOffset(this.activeBits[b], this.frame / this.framesPerTick );
+            }
         }
     }
     // Then display devices
@@ -629,7 +627,7 @@ Program.prototype.displayPlayfield = function() {
         var row = this.grid[y];
         for (var x = 0; x < row.length; x++) {
             var device = row[x];
-            drawDeviceAt(device, x, y);
+            drawDevice(device);
         }
     }
 }
@@ -641,24 +639,39 @@ function clearCanvas() {
 }
 
 function drawBitOffset(bit, offsetAmount) {
-    var x = bit.x + dx(bit.direction) * offsetAmount;
-    var y = bit.y + dy(bit.direction) * offsetAmount;
-    var bitCode = (bit.value ? ONE_BIT : ZERO_BIT);
-    drawBitsAt(bitCode, x, y);
+    var x = bit.x + 0.5 + dx(bit.direction) * offsetAmount;
+    var y = bit.y + 0.5 + dy(bit.direction) * offsetAmount;
+    drawBitAt(bit, x, y);
 }
 
-function drawBitsAt(bitCode, x, y, scale=1) {
-    if (bitCode > 0) {
-        var centerX = (x + 0.5) * GRID_SQUARE_SIZE;
-        var centerY = (y + 0.5) * GRID_SQUARE_SIZE;
-        if (bitCode === ZERO_BIT) {
-            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS * scale, BLUE);
-        } else if (bitCode === ONE_BIT) {
-            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS * scale, GREEN);
-        } else {  // Both a zero and a one bit
-            drawCircle(centerX, centerY, BIT_SHAPE_RADIUS * scale, BLUE);
-            drawDiamond(centerX, centerY, BIT_SHAPE_RADIUS * scale, GREEN);
+function drawDevice(device) {
+    drawDeviceAt(device, device.x + 0.5, device.y + 0.5);
+    if (device instanceof Collector || device instanceof Source) {
+        if (device.queue.length > 0) {
+            drawQueueAt(device.queue, device.x + 0.5, device.y + 1/7);
         }
+    }
+}
+
+function drawBitAt(bit, x, y, scale=1) {
+    // Draw a green diamond for a 1 bit, blue circle for a 0 bit
+    if (bit.value) {
+        drawDiamond(x * GRID_SQUARE_SIZE, y * GRID_SQUARE_SIZE, BIT_SHAPE_RADIUS * scale, GREEN);
+    } else {
+        drawCircle(x * GRID_SQUARE_SIZE, y * GRID_SQUARE_SIZE, BIT_SHAPE_RADIUS * scale, BLUE);
+    }
+}
+
+function drawDeviceAt(device, x, y) {
+    drawCharacter(device.toString(), x * GRID_SQUARE_SIZE, y * GRID_SQUARE_SIZE, BLACK);
+}
+
+function drawQueueAt(queue, x, y) {
+    // Show up to first 6 bits in queue above device with a white background
+    drawRectangle(x * GRID_SQUARE_SIZE, y * GRID_SQUARE_SIZE, GRID_SQUARE_SIZE, GRID_SQUARE_SIZE / 6, WHITE);
+    for (let i = 0; i < Math.min(queue.length, 6); i++) {
+        let bit = queue[i];
+        drawBitAt(bit, x + 0.5 - (i + 1) / 7, y, QUEUE_BIT_SCALE);
     }
 }
 
@@ -679,6 +692,11 @@ function drawDiamond(x, y, radius, color) {
     context.fill();
 }
 
+function drawCharacter(character, x, y, color) {
+    context.fillStyle = color;
+    context.fillText(character, x - 0.3 * GRID_FONT_SIZE, y + 0.25 * GRID_FONT_SIZE);
+}
+
 function drawRectangle(x, y, width, height, color) {
     context.fillStyle = color;
     context.beginPath();
@@ -687,31 +705,6 @@ function drawRectangle(x, y, width, height, color) {
     context.lineTo(x + width / 2, y + height / 2);
     context.lineTo(x - width / 2, y + height / 2);
     context.fill();
-}
-
-function drawDeviceAt(device, x, y) {
-    var textX = (x + 0.5) * GRID_SQUARE_SIZE - 0.3 * GRID_FONT_SIZE;
-    var textY = (y + 0.5) * GRID_SQUARE_SIZE + 0.25 * GRID_FONT_SIZE;
-    context.fillStyle = BLACK;
-    context.fillText(device.toString(), textX, textY);
-    
-    if (device instanceof Collector || device instanceof Source) {
-        if (device.queue.length > 0) {
-            // Show up to first 6 bits in queue above device
-            var backgroundX = (x + 0.5) * GRID_SQUARE_SIZE;
-            var backgroundY = (y + 1 / 7) * GRID_SQUARE_SIZE;
-            drawRectangle(backgroundX, backgroundY, GRID_SQUARE_SIZE, GRID_SQUARE_SIZE / 6, WHITE);
-            for (let i = 0; i < Math.min(device.queue.length, 6); i++) {
-                let bit = device.queue[i];
-                drawBitsAt(
-                    (bit.value ? ONE_BIT : ZERO_BIT),
-                    x - (1 / 7 + i / 7) + 0.5,
-                    y + 1 / 7 - 0.5,
-                    0.25
-                );
-            }
-        }
-    }
 }
 
 function urlDecode(value) {
