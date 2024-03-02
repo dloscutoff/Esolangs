@@ -282,6 +282,9 @@ function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat,
     
     this.height = codeLines.length;
     this.width = Math.max(...codeLines.map(line => line.length));
+    if (this.width === 0) {
+        this.width = 1;
+    }
     this.collectors = {};
     this.openCollectors = [];
     this.sources = [];
