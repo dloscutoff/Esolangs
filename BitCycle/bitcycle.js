@@ -978,7 +978,7 @@ function speedInputChange() {
           framesPerTick = document.getElementById('frames-per-tick'),
           tick = document.getElementById('tick');
     program.setSpeed(ticksPerSecond.value, framesPerTick.value);
-    if (framesPerTick.value > 1) {
+    if (!program.done && framesPerTick.value > 1) {
         tick.style.display = "block";
     } else {
         tick.style.display = "none";
