@@ -264,6 +264,8 @@ Device.prototype.toString = function() {
 function Program(codeLines, inputLines, ticksPerSecond, framesPerTick, ioFormat, expand) {
     let sinkNumber = 0;
     
+    this.ticksPerSecond = DEFAULT_TICKS_PER_SECOND;
+    this.framesPerTick = DEFAULT_FRAMES_PER_TICK;
     this.setSpeed(ticksPerSecond, framesPerTick);
     this.frame = 0;
     this.done = false;
