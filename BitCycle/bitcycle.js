@@ -812,17 +812,17 @@ function unpackCode(packedCode) {
 function showEditor() {
     const editor = document.getElementById('editor'),
           interpreter = document.getElementById('interpreter'),
-          startEdit = document.getElementById('start-edit'),
-          permalink = document.getElementById('permalink'),
+          mainControlsEdit = document.getElementById('main-controls-edit-mode'),
+          mainControlsRun = document.getElementById('main-controls-run-mode'),
           executionControls = document.getElementById('execution-controls'),
           sourceCode = document.getElementById('source');
     
-    editor.style.display = "block";
-    interpreter.style.display = "none";
-    startEdit.value = "Execute";
+    editor.classList.remove("hide");
+    interpreter.classList.add("hide");
     
-    permalink.style.display = "inline-block";
-    executionControls.style.display = "none";
+    mainControlsEdit.classList.remove("hide");
+    mainControlsRun.classList.add("hide");
+    executionControls.classList.add("hide");
     
     sourceCode.focus();
 }
@@ -830,16 +830,32 @@ function showEditor() {
 function hideEditor() {
     const editor = document.getElementById('editor'),
           interpreter = document.getElementById('interpreter'),
-          startEdit = document.getElementById('start-edit'),
-          permalink = document.getElementById('permalink'),
+          mainControlsEdit = document.getElementById('main-controls-edit-mode'),
+          mainControlsRun = document.getElementById('main-controls-run-mode'),
           executionControls = document.getElementById('execution-controls');
     
-    editor.style.display = "none";
-    interpreter.style.display = "block";
-    startEdit.value = "Edit";
+    editor.classList.add("hide");
+    interpreter.classList.remove("hide");
     
-    permalink.style.display = "none";
-    executionControls.style.display = "block";
+    mainControlsEdit.classList.add("hide");
+    mainControlsRun.classList.remove("hide");
+    executionControls.classList.remove("hide");
+}
+
+function updateByteCount() {
+    const byteCount = document.getElementById('byte-count'),
+          sourceCode = document.getElementById('source');
+    const sourceAsBytes = unescape(encodeURIComponent(sourceCode.value));
+    
+    byteCount.innerText = pluralize(sourceAsBytes.length, "byte");
+}
+
+function pluralize(number, noun) {
+    if (number === 1) {
+        return `${number} ${noun}`;
+    } else {
+        return `${number} ${noun}s`;
+    }
 }
 
 function toggleCheatSheet() {
@@ -886,14 +902,14 @@ function loadProgram() {
     // Display the current state of the playfield
     program.displayPlayfield();
     
-    runPause.style.display = "block";
-    step.style.display = "block";
+    runPause.classList.remove("hide");
+    step.classList.remove("hide");
     if (framesPerTick.value > 1) {
-        tick.style.display = "block";
+        tick.classList.remove("hide");
     } else {
-        tick.style.display = "none";
+        tick.classList.add("hide");
     }
-    done.style.display = "none";
+    done.classList.add("hide");
     runPause.value = "Run";
     haltRestart.value = "Halt";
 }
@@ -919,21 +935,21 @@ function haltProgram() {
     
     program.halt();
     
-    runPause.style.display = "none";
-    step.style.display = "none";
-    tick.style.display = "none";
-    done.style.display = "block";
+    runPause.classList.add("hide");
+    step.classList.add("hide");
+    tick.classList.add("hide");
+    done.classList.remove("hide");
     haltRestart.value = "Restart";
 }
 
-function startEditBtnClick() {
-    if (program === null) {
-        loadProgram();
-        hideEditor();
-    } else {
-        unloadProgram();
-        showEditor();
-    }
+function startBtnClick() {
+    loadProgram();
+    hideEditor();
+}
+
+function editBtnClick() {
+    unloadProgram();
+    showEditor();
 }
 
 function runPauseBtnClick() {
@@ -982,9 +998,9 @@ function speedInputChange() {
           tick = document.getElementById('tick');
     program.setSpeed(ticksPerSecond.value, framesPerTick.value);
     if (!program.done && framesPerTick.value > 1) {
-        tick.style.display = "block";
+        tick.classList.remove("hide");
     } else {
-        tick.style.display = "none";
+        tick.classList.add("hide");
     }
 }
 
@@ -1012,5 +1028,6 @@ window.onload = function() {
     context = null;
     program = null;
     loadFromQueryString();
+    updateByteCount()
     showEditor();
 }
