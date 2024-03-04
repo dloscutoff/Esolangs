@@ -10,13 +10,23 @@ With contributions from Mousetail (https://github.com/mousetail)
 
 <body>
 <h1><a href="https://github.com/dloscutoff/Esolangs/tree/master/BitCycle" target="_blank"><span class="blue">Bit</span><span class="green">Cycle</span></a></h1>
-<div id="main-controls" class="container">
-    <input type="button" id="start-edit" class="control float-left so-box" value="Start/Edit" onclick="startEditBtnClick()" />
-    <input type="button" id="permalink" class="control float-right so-box" value="Permalink" onclick="permalinkBtnClick()" />
+<div id="main-controls-edit-mode" class="container">
+    <div class="float-left">
+        <input type="button" id="start" class="control so-box" value="Execute" onclick="startBtnClick()" />
+    </div>
+    <div class="float-right">
+        <span id="byte-count" class=""></span>
+        <input type="button" id="permalink" class="control so-box" value="Permalink" onclick="permalinkBtnClick()" />
+    </div>
+</div>
+<div id="main-controls-run-mode" class="container">
+    <div class="float-left">
+        <input type="button" id="edit" class="control so-box" value="Edit" onclick="editBtnClick()" />
+    </div>
 </div>
 <div id="editor">
     <div id="source-container" class="container">
-        <textarea id="source" placeholder="Enter your program here" rows="10" wrap="off" data-gramm_editor="false" spellcheck="false" autocapitalize="none" autocorrect="off"></textarea>
+        <textarea id="source" placeholder="Enter your program here" rows="10" wrap="off" data-gramm_editor="false" spellcheck="false" autocapitalize="none" autocorrect="off" oninput="updateByteCount()"></textarea>
     </div>
     <div id="inputs-container" class="container">
         <textarea id="inputs" placeholder="Inputs, one per line" rows="3" wrap="off" data-gramm_editor="false" spellcheck="false" autocapitalize="none" autocorrect="off"></textarea>
@@ -41,20 +51,24 @@ With contributions from Mousetail (https://github.com/mousetail)
 </div>
 <div id="execution-controls">
     <div id="execution-buttons" class="container">
-        <input type="button" id="run-pause" class="control float-left so-box" value="Run/Pause" onclick="runPauseBtnClick()" />
-        <input type="button" id="step" class="control float-left so-box" value="Step" onclick="stepBtnClick()" />
-        <input type="button" id="tick" class="control float-left so-box" value="Tick" onclick="tickBtnClick()" />
-        <span id="done" class="control float-left so-box">Done.</span>
-        <input type="button" id="halt-restart" class="control float-left so-box" value="Halt/Restart" onclick="haltRestartBtnClick()" />
+        <div class="float-left">
+            <input type="button" id="run-pause" class="control so-box" value="Run/Pause" onclick="runPauseBtnClick()" />
+            <input type="button" id="step" class="control so-box" value="Step" onclick="stepBtnClick()" />
+            <input type="button" id="tick" class="control so-box" value="Tick" onclick="tickBtnClick()" />
+            <span id="done" class="control so-box">Done.</span>
+            <input type="button" id="halt-restart" class="control so-box" value="Halt/Restart" onclick="haltRestartBtnClick()" />
+        </div>
     </div>
     <div id="execution-options" class="container">
-        <div class="option float-left so-box">
-            <label for="ticks-per-second">Ticks per second:</label>
-            <input type="number" id="ticks-per-second" min="1" value="10" onchange="speedInputChange()" />
-        </div>
-        <div class="option float-left so-box">
-            <label for="frames-per-tick">Frames per tick:</label>
-            <input type="number" id="frames-per-tick" min="1" value="1" onchange="speedInputChange()" />
+        <div class="float-left">
+            <span class="option so-box">
+                <label for="ticks-per-second">Ticks per second:</label>
+                <input type="number" id="ticks-per-second" min="1" value="10" onchange="speedInputChange()" />
+            </span>
+            <span class="option so-box">
+                <label for="frames-per-tick">Frames per tick:</label>
+                <input type="number" id="frames-per-tick" min="1" value="1" onchange="speedInputChange()" />
+            </span>
         </div>
     </div>
 </div>

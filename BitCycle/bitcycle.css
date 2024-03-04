@@ -26,14 +26,18 @@
     margin: 2px;
 }
 .float-left {
-    display: inline-block;
     float: left;
-    margin-right: 15px;
+}
+.float-left > * {
+    display: inline-block;
+    margin-right: 10px;
 }
 .float-right {
-    display: inline-block;
     float: right;
-    margin-left: 15px;
+}
+.float-right > * {
+    display: inline-block;
+    margin-left: 10px;
 }
 .output {
     font-family: 'Courier New', monospace;
@@ -74,6 +78,11 @@ canvas {
 input[type="number"] {
     width: 4em;
 }
+code {
+    padding: 0.25rem;
+    background-color: #ddd;
+    border-radius: 0.25rem;
+}
 #cheat-sheet-indicator {
     font-family: 'Courier New', monospace;
 }
@@ -81,10 +90,4 @@ input[type="number"] {
     border: #444;
     background: #888;
     cursor: default;
-}
-
-code {
-    padding: 0.25rem;
-    background-color: #ddd;
-    border-radius: 0.25rem;
 }
