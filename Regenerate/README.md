@@ -23,6 +23,8 @@ By default, Regenerate only outputs the first match it finds. To output more, us
 
 To output all possible matches, use the `-a` flag. (Note: if you use an unbounded quantifier, you will get infinite output!)
 
+To output the total number of possible matches instead of the matches themselves, use the `-c` flag. You can combine `-c` with `-l` to guard against infinite loops.
+
 Regenerate supports the typical regex operations:
 
     > python3 regenerate.py -l 12 'a*(b{1,2}|[c-e])f?'

@@ -483,7 +483,7 @@ def all_matches(regex, inputs):
 
 
 def main(regex, inputs=None, result_limit=1, match_sep="\n",
-         trailing_newline=True, verbose=False):
+         trailing_newline=True, verbose=False, output_match_count=False):
     if verbose:
         verbose_separator = "-----"
         print(verbose_separator)
@@ -503,14 +503,22 @@ def main(regex, inputs=None, result_limit=1, match_sep="\n",
         print("Parse tree:")
         pprint.pprint(parsed_regex)
         print(verbose_separator)
-    for i, match_result in enumerate(all_matches(parsed_regex, inputs)):
-        if i >= result_limit:
-            break
-        if i > 0:
-            print(match_sep, end="")
-        print(match_result, end="")
-    if trailing_newline:
-        print()
+    match_count = 0
+    try:
+        for i, match_result in enumerate(all_matches(parsed_regex, inputs)):
+            if i >= result_limit:
+                break
+            match_count += 1
+            if not output_match_count:
+                # Output the next match
+                if i > 0:
+                    print(match_sep, end="")
+                print(match_result, end="")
+    finally:
+        if output_match_count:
+            print(match_count, end="")
+        if trailing_newline:
+            print()
 
 
 def parse_options():
@@ -530,13 +538,20 @@ def parse_options():
     match_limit.add_argument("-l",
                              "--limit",
                              type=int,
-                             default=1,
-                             help="maximum number of matches to return")
+                             default=-1,
+                             help="maximum number of matches to return "
+                             "(defaults to 1)")
     match_limit.add_argument("-a",
                              "--all",
                              action="store_true",
                              help="return all matches (may cause "
                              "infinite output)")
+    argparser.add_argument("-c",
+                           "--count",
+                           action="store_true",
+                           help="return the number of matches instead of "
+                           "the matches themselves (may cause an infinite "
+                           "loop unless combined with -l)")
     argparser.add_argument("-s",
                            "--sep",
                            default="\n",
@@ -597,13 +612,25 @@ def parse_options():
 
     if options.all:
         options.limit = INFINITY
+    elif options.limit == -1:
+        # With -c flag, default behavior is to count all matches;
+        # without it, default behavior is to output the first match
+        if options.count:
+            options.limit = INFINITY
+        else:
+            options.limit = 1
 
     return options
 
 
 if __name__ == "__main__":
     options = parse_options()
-    main(options.regex, inputs=options.args, result_limit=options.limit,
-         match_sep=options.sep, trailing_newline=options.no_newline,
-         verbose=options.verbose)
+    main(options.regex,
+         inputs=options.args,
+         result_limit=options.limit,
+         match_sep=options.sep,
+         trailing_newline=options.no_newline,
+         verbose=options.verbose,
+         output_match_count=options.count,
+         )
 
