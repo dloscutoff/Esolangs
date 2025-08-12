@@ -42,7 +42,6 @@ Generate strings using regular expression syntax.
 
 [Github](https://github.com/dloscutoff/Esolangs/tree/master/Regenerate)
 | [Attempt This Online](https://ato.pxeger.com/run?L=regenerate)
-| [Replit](https://replit.com/@dloscutoff/regenerate)
 
 ### Sisi
 
